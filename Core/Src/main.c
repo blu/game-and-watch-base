@@ -93,6 +93,7 @@ int main(void)
 		Error_Handler();
 	}
 
+	uint8_t alt = 0;
 	uint16_t color = 0;
 	uint32_t i = 0;
 
@@ -110,15 +111,49 @@ int main(void)
 		if(buttons & B_Down) {
 			color = 0;
 		}
+		if (buttons & B_A) {
+			alt = 0;
+		}
+		if (buttons & B_B) {
+			alt = 1;
+		}
 
-		for(int y=0, row=0; y < 240; y++, row+=320) {
-			for(int x=0; x < 320; x++) {
-				if(((x + i)/16 % 2 == 0) && (((y + i)/16 % 2 == 0))){
-					framebuffer[i & 1][row+x] = color;
-				} else {
-					framebuffer[i & 1][row+x] = 0xffff;
+		if (0 == alt) {
+			/* Uniform squares of the color */
+			for(int y=0, row=0; y < 240; y++, row+=320) {
+				for(int x=0; x < 320; x++) {
+					if(((x + i)/16 % 2 == 0) && (((y + i)/16 % 2 == 0))){
+						framebuffer[i & 1][row+x] = color;
+					} else {
+						framebuffer[i & 1][row+x] = 0xffff;
+					}
 				}
 			}
+		}
+		else {
+			/* Solid color */
+			__asm__ __volatile__ (
+			"bfi %[color],%[color],#16,#16\n\t"
+			"movs r0,%[color]\n\t"
+			"movs r1,%[color]\n\t"
+			"movs r2,%[color]\n\t"
+			"movs r3,%[color]\n\t"
+			"movs r4,%[color]\n\t"
+			"movs r5,%[color]\n\t"
+			"movs r6,%[color]\n\t"
+			"movs r7,%[color]\n\t"
+			"movs r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+			"stm %[fb]!,{r0-r7}\n\t"
+			"stm %[fb]!,{r0-r7}\n\t"
+			"stm %[fb]!,{r0-r7}\n\t"
+			"stm %[fb]!,{r0-r7}\n\t"
+			"subs r8,r8,#1\n\t"
+			"bne 1b\n"
+			: /* none */
+			: [fb] "r" (&framebuffer[i & 1]), [color] "r" ((uint32_t) color)
+			: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+			  "r8", "cc");
 		}
 
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
