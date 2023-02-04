@@ -1,5 +1,6 @@
 #include "flash.h"
 
+void Error_Handler(void);
 
 void flash_memory_map(OSPI_HandleTypeDef *spi) {
   OSPI_RegularCmdTypeDef cmd = {

@@ -75,7 +75,6 @@ SECTIONS
   {
     . = ALIGN(4);
     *(.lcd)
-    *(.audio)
     . = ALIGN(4);
   }  > RAM
 
