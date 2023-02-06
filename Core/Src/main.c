@@ -51,6 +51,17 @@ static void MX_OCTOSPI1_Init(void);
 static void MX_SAI1_Init(void);
 static void MX_NVIC_Init(void);
 
+uint16_t sinLUT15_64[] = {
+	0x0000, 0x0324, 0x0648, 0x096B, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2,
+	0x18F9, 0x1C0C, 0x1F1A, 0x2224, 0x2528, 0x2827, 0x2B1F, 0x2E11,
+	0x30FC, 0x33DF, 0x36BA, 0x398D, 0x3C57, 0x3F17, 0x41CE, 0x447B,
+	0x471D, 0x49B4, 0x4C40, 0x4EC0, 0x5134, 0x539B, 0x55F6, 0x5843,
+	0x5A82, 0x5CB4, 0x5ED7, 0x60EC, 0x62F2, 0x64E9, 0x66D0, 0x68A7,
+	0x6A6E, 0x6C24, 0x6DCA, 0x6F5F, 0x70E3, 0x7255, 0x73B6, 0x7505,
+	0x7642, 0x776C, 0x7885, 0x798A, 0x7A7D, 0x7B5D, 0x7C2A, 0x7CE4,
+	0x7D8A, 0x7E1E, 0x7E9D, 0x7F0A, 0x7F62, 0x7FA7, 0x7FD9, 0x7FF6,
+};
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -95,7 +106,7 @@ int main(void)
 
 	uint8_t alt = 0;
 	uint16_t color = 0;
-	uint32_t i = 0;
+	uint32_t i = 0, last_press = 0;
 
 	while (1) {
 		uint32_t buttons = buttons_get();
@@ -111,18 +122,32 @@ int main(void)
 		if(buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A) {
-			alt = 0;
+		if (buttons & B_A && i - last_press > 3) {
+			last_press = i;
+			alt += alt < 3 ? 1 : 0;
 		}
-		if (buttons & B_B) {
-			alt = 1;
+		if (buttons & B_B && i - last_press > 3) {
+			last_press = i;
+			alt -= alt > 0 ? 1 : 0;
 		}
 
-		if (0 == alt) {
+		if (alt == 0) {
+			/* Checkers of the color */
+			for(int y=0, row=0; y < 240; y++, row+=320) {
+				for(int x=0; x < 320; x++) {
+					if(((x + i) & 32) ^ (((y + i) & 32))) {
+						framebuffer[i & 1][row+x] = color;
+					} else {
+						framebuffer[i & 1][row+x] = 0xffff;
+					}
+				}
+			}
+		}
+		else if (alt == 1) {
 			/* Uniform squares of the color */
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
-					if(((x + i)/16 % 2 == 0) && (((y + i)/16 % 2 == 0))){
+					if(((x + i) & 32) & (((y + i) & 32))) {
 						framebuffer[i & 1][row+x] = color;
 					} else {
 						framebuffer[i & 1][row+x] = 0xffff;
@@ -131,35 +156,105 @@ int main(void)
 			}
 		}
 		else {
-			/* Solid color */
+			/* Inverse dot circling CW on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = i;
+			register void *ptr_sinLUT15_64 asm ("r12") = sinLUT15_64;
+			register void *ptr_fb asm ("r14") = framebuffer + (i & 1);
+
 			__asm__ __volatile__ (
-			"bfi %[color],%[color],#16,#16\n\t"
-			"movs r0,%[color]\n\t"
-			"movs r1,%[color]\n\t"
-			"movs r2,%[color]\n\t"
-			"movs r3,%[color]\n\t"
-			"movs r4,%[color]\n\t"
-			"movs r5,%[color]\n\t"
-			"movs r6,%[color]\n\t"
-			"movs r7,%[color]\n\t"
-			"movs r8,#(320*240*2/(8*4*4))\n\t"
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
 			"1:\n\t"
-			"stm %[fb]!,{r0-r7}\n\t"
-			"stm %[fb]!,{r0-r7}\n\t"
-			"stm %[fb]!,{r0-r7}\n\t"
-			"stm %[fb]!,{r0-r7}\n\t"
-			"subs r8,r8,#1\n\t"
-			"bne 1b\n"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+			/* plot a CW-rotating dot */
+				"movs	r0,#112\n\t"
+				"movs	r1,%[idx]\n\t"
+				"bl		mul_sin\n\t"
+				"asrs	r0,r0,#15\n\t"
+				"adcs	r0,r0,#120\n\t"
+				"movs	r1,#640\n\t"
+				"smulbb	r2,r1,r0\n\t"
+
+				"movs	r0,#112\n\t"
+				"movs	r1,%[idx]\n\t"
+				"bl		mul_cos\n\t"
+				"asrs	r0,r0,#15\n\t"
+				"adcs	r1,r0,#160\n\t"
+
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+
+				"adds	r2,r2,%[fb]\n\t"
+				"mvns	%[color],%[color]\n\t"
+				"str	%[color],[r2,r1,lsl #1]\n\t"
+				"adds	r2,r2,#640\n\t"
+				"str	%[color],[r2,r1,lsl #1]\n\t"
+
+				"b		done\n\t"
+			/*
+			  multiply by sine
+			  r0.w: multiplicand
+			  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
+			  r12: sinLUT15 ptr
+			  returns: r0.l: sine product as fx16.15 (r0[31] replicates sign)
+			*/
+			"mul_sin:\n\t"
+				"ands	r1,r1,#0xff\n\t"
+				"cmp	r1,#0x80\n\t"
+				"bcc	sign_done\n\t"
+				"negs	r0,r0\n\t"
+				"subs	r1,r1,#0x80\n\t"
+			"sign_done:\n\t"
+				"cmp	r1,#0x40\n\t"
+				"bcc	fetch\n\t"
+				"bne	not_maximum\n\t"
+				"sxth	r0,r0\n\t"
+				"lsls	r0,r0,#15\n\t"
+				"bx		lr\n\t"
+			"not_maximum:\n\t"
+				"subs	r1,r1,#0x80\n\t"
+				"negs	r1,r1\n\t"
+			"fetch:\n\t"
+				"ldrh	r1,[%[sinLUT15_64],r1,lsl #1]\n\t"
+				"smulbb	r0,r0,r1\n\t"
+				"bx		lr\n\t"
+			/*
+			  multiply by cosine
+			  r0.w: multiplicand
+			  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
+			  r12: sinLUT15 ptr
+			  returns; r0.l: cosine product as fx16.15 (r0[31] replicates sign)
+			*/
+			"mul_cos:\n\t"
+				"adds	r1,r1,#0x40\n\t"
+				"b		mul_sin\n\t"
+			"done:\n\t"
 			: /* none */
-			: [fb] "r" (&framebuffer[i & 1]), [color] "r" ((uint32_t) color)
-			: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
-			  "r8", "cc");
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [sinLUT15_64] "r" (ptr_sinLUT15_64),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 		}
 
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
 		HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_VERTICAL_BLANKING);
 
-		while ((hltdc.Instance->SRCR & LTDC_RELOAD_VERTICAL_BLANKING) != 0);
+		while ((hltdc.Instance->SRCR & LTDC_RELOAD_VERTICAL_BLANKING) != 0) {}
 
 		i++;
 	}
