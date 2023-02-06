@@ -199,15 +199,21 @@ int main(void)
 		}
 		else if (alt == 1) {
 			/* Uniform squares of the color */
-			int32_t off = mul_sin(64, i * 4);
+			int32_t off_x = mul_sin(64, i * 4);
+			int32_t off_y = mul_cos(128, i * 2);
 			__asm__ __volatile (
-				"asrs	%[arg],%[arg],#15\n\t"
-				"adcs	%[arg],%[arg],#0\n\t"
-			: [arg] "=r" (off) : "0" (off));
+				"asrs	%[arg_x],%[arg_x],#15\n\t"
+				"adcs	%[arg_x],%[arg_x],#0\n\t"
+				"asrs	%[arg_y],%[arg_y],#15\n\t"
+				"adcs	%[arg_y],%[arg_y],#0\n\t"
+			: [arg_x] "=r" (off_x),
+			  [arg_y] "=r" (off_y)
+			: "0" (off_x),
+			  "1" (off_y));
 
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
-					if(((x + off) & 32) & (((y + i) & 32))) {
+					if(((x + off_x) & 32) & (((y + off_y) & 32))) {
 						framebuffer[i & 1][row+x] = color;
 					} else {
 						framebuffer[i & 1][row+x] = 0xffff;
