@@ -82,6 +82,7 @@ int32_t mul_sin(int16_t multiplicand, uint16_t ticks)
 		"ldrh	r1,[r12,r1,lsl #1]\n\t"
 		"smulbb	r0,r0,r1\n\t"
 		"bx		lr\n\t"
+		".balign 32\n\t"
 	"sinLUT15_64:\n\t"
 		".short 0x0000, 0x0324, 0x0648, 0x096B, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2\n\t"
 		".short 0x18F9, 0x1C0C, 0x1F1A, 0x2224, 0x2528, 0x2827, 0x2B1F, 0x2E11\n\t"
@@ -170,11 +171,11 @@ int main(void)
 		if(buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && i - last_press > 3) {
+		if (buttons & B_A && i - last_press > 7) {
 			last_press = i;
 			alt += alt < 3 ? 1 : 0;
 		}
-		if (buttons & B_B && i - last_press > 3) {
+		if (buttons & B_B && i - last_press > 7) {
 			last_press = i;
 			alt -= alt > 0 ? 1 : 0;
 		}
@@ -218,6 +219,25 @@ int main(void)
 					} else {
 						framebuffer[i & 1][row+x] = 0xffff;
 					}
+				}
+			}
+		}
+		else if (alt == 2) {
+			for(int y=0, row=0; y < 240; y++, row+=320) {
+				for(int x=0; x < 320; x++) {
+					int32_t off_x = mul_sin(0xf, (x + i * 4) * 4);
+					int32_t off_y = mul_cos(0xf, (y + i * 4) * 4);
+					__asm__ __volatile (
+						"asrs	%[arg_x],%[arg_x],#15\n\t"
+						"adcs	%[arg_x],%[arg_x],#16\n\t"
+						"asrs	%[arg_y],%[arg_y],#15\n\t"
+						"adcs	%[arg_y],%[arg_y],#16\n\t"
+					: [arg_x] "=r" (off_x),
+					  [arg_y] "=r" (off_y)
+					: "0" (off_x),
+					  "1" (off_y));
+
+					framebuffer[i & 1][row+x] = off_x + off_y;
 				}
 			}
 		}

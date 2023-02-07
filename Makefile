@@ -20,7 +20,7 @@ TARGET = gw_base
 # building variables
 ######################################
 # debug build?
-DEBUG = 1
+DEBUG ?= 1
 # optimization
 OPT = -Og
 
@@ -138,6 +138,8 @@ CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2 -O0
+else
+CFLAGS += -Ofast
 endif
 
 
