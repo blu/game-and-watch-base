@@ -73,7 +73,7 @@ int32_t mul_sin(int16_t multiplicand, uint16_t ticks)
 		"bne	not_maximum\n\t"
 		"sxth	r0,r0\n\t"
 		"lsls	r0,r0,#15\n\t"
-		"bx		lr\n\t"
+		"bx	lr\n\t"
 	"not_maximum:\n\t"
 		"subs	r1,r1,#0x80\n\t"
 		"negs	r1,r1\n\t"
@@ -81,7 +81,7 @@ int32_t mul_sin(int16_t multiplicand, uint16_t ticks)
 		"adr	r12,sinLUT15_64\n\t"
 		"ldrh	r1,[r12,r1,lsl #1]\n\t"
 		"smulbb	r0,r0,r1\n\t"
-		"bx		lr\n\t"
+		"bx	lr\n\t"
 		".balign 32\n\t"
 	"sinLUT15_64:\n\t"
 		".short 0x0000, 0x0324, 0x0648, 0x096B, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2\n\t"
@@ -92,6 +92,54 @@ int32_t mul_sin(int16_t multiplicand, uint16_t ticks)
 		".short 0x6A6E, 0x6C24, 0x6DCA, 0x6F5F, 0x70E3, 0x7255, 0x73B6, 0x7505\n\t"
 		".short 0x7642, 0x776C, 0x7885, 0x798A, 0x7A7D, 0x7B5D, 0x7C2A, 0x7CE4\n\t"
 		".short 0x7D8A, 0x7E1E, 0x7E9D, 0x7F0A, 0x7F62, 0x7FA7, 0x7FD9, 0x7FF6"
+	);
+}
+
+int32_t mul_sin2(int16_t multiplicand, uint16_t ticks) __attribute__ ((naked));
+
+int32_t mul_sin2(int16_t multiplicand, uint16_t ticks)
+{
+	__asm__ (
+	/*
+	  multiply by sine
+	  r0.w: multiplicand
+	  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
+	  returns: r0.l: sine product as fx16.15 (r0[31] replicates sign)
+	*/
+		"ands	r1,r1,#0xff\n\t"
+		"cmp	r1,#0x80\n\t"
+		"bcc	sign_done2\n\t"
+		"negs	r0,r0\n\t"
+		"subs	r1,r1,#0x80\n\t"
+	"sign_done2:\n\t"
+		"cmp	r1,#0x40\n\t"
+		"bne	fetch2\n\t"
+		"sxth	r0,r0\n\t"
+		"lsls	r0,r0,#15\n\t"
+		"bx	lr\n\t"
+	"fetch2:\n\t"
+		"adr	r12,sinLUT15_64_2\n\t"
+		"ldrh	r1,[r12,r1,lsl #1]\n\t"
+		"smulbb	r0,r0,r1\n\t"
+		"bx	lr\n\t"
+		".balign 32\n\t"
+	"sinLUT15_64_2:\n\t"
+		".short 0x0000, 0x0324, 0x0648, 0x096B, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2\n\t"
+		".short 0x18F9, 0x1C0C, 0x1F1A, 0x2224, 0x2528, 0x2827, 0x2B1F, 0x2E11\n\t"
+		".short 0x30FC, 0x33DF, 0x36BA, 0x398D, 0x3C57, 0x3F17, 0x41CE, 0x447B\n\t"
+		".short 0x471D, 0x49B4, 0x4C40, 0x4EC0, 0x5134, 0x539B, 0x55F6, 0x5843\n\t"
+		".short 0x5A82, 0x5CB4, 0x5ED7, 0x60EC, 0x62F2, 0x64E9, 0x66D0, 0x68A7\n\t"
+		".short 0x6A6E, 0x6C24, 0x6DCA, 0x6F5F, 0x70E3, 0x7255, 0x73B6, 0x7505\n\t"
+		".short 0x7642, 0x776C, 0x7885, 0x798A, 0x7A7D, 0x7B5D, 0x7C2A, 0x7CE4\n\t"
+		".short 0x7D8A, 0x7E1E, 0x7E9D, 0x7F0A, 0x7F62, 0x7FA7, 0x7FD9, 0x7FF6\n\t"
+		".short 0x0000, 0x7FF6, 0x7FD9, 0x7FA7, 0x7F62, 0x7F0A, 0x7E9D, 0x7E1E\n\t"
+		".short 0x7D8A, 0x7CE4, 0x7C2A, 0x7B5D, 0x7A7D, 0x798A, 0x7885, 0x776C\n\t"
+		".short 0x7642, 0x7505, 0x73B6, 0x7255, 0x70E3, 0x6F5F, 0x6DCA, 0x6C24\n\t"
+		".short 0x6A6E, 0x68A7, 0x66D0, 0x64E9, 0x62F2, 0x60EC, 0x5ED7, 0x5CB4\n\t"
+		".short 0x5A82, 0x5843, 0x55F6, 0x539B, 0x5134, 0x4EC0, 0x4C40, 0x49B4\n\t"
+		".short 0x471D, 0x447B, 0x41CE, 0x3F17, 0x3C57, 0x398D, 0x36BA, 0x33DF\n\t"
+		".short 0x30FC, 0x2E11, 0x2B1F, 0x2827, 0x2528, 0x2224, 0x1F1A, 0x1C0C\n\t"
+		".short 0x18F9, 0x15E2, 0x12C8, 0x0FAB, 0x0C8C, 0x096B, 0x0648, 0x0324"
 	);
 }
 
@@ -107,7 +155,23 @@ int32_t mul_cos(int16_t multiplicand, uint16_t ticks)
 	  returns; r0.l: cosine product as fx16.15 (r0[31] replicates sign)
 	*/
 		"adds	r1,r1,#0x40\n\t"
-		"b		mul_sin\n\t"
+		"b	mul_sin\n\t"
+	);
+}
+
+int32_t mul_cos2(int16_t multiplicand, uint16_t ticks) __attribute__ ((naked));
+
+int32_t mul_cos2(int16_t multiplicand, uint16_t ticks)
+{
+	__asm__ (
+	/*
+	  multiply by cosine
+	  r0.w: multiplicand
+	  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
+	  returns; r0.l: cosine product as fx16.15 (r0[31] replicates sign)
+	*/
+		"adds	r1,r1,#0x40\n\t"
+		"b	mul_sin2\n\t"
 	);
 }
 
@@ -269,7 +333,7 @@ int main(void)
 			/* plot a CW-rotating dot */
 				"movs	r0,#112\n\t"
 				"movs	r1,%[idx]\n\t"
-				"bl		mul_sin\n\t"
+				"bl	mul_sin\n\t"
 				"asrs	r0,r0,#15\n\t"
 				"adcs	r0,r0,#120\n\t"
 				"movs	r1,#640\n\t"
@@ -277,7 +341,7 @@ int main(void)
 
 				"movs	r0,#112\n\t"
 				"movs	r1,%[idx]\n\t"
-				"bl		mul_cos\n\t"
+				"bl	mul_cos\n\t"
 				"asrs	r0,r0,#15\n\t"
 				"adcs	r1,r0,#160\n\t"
 
