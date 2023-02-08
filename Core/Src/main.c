@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "main.h"
+#include <core_cm7.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -87,7 +88,11 @@ short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 	-25,  14,
 };
 
+uint32_t sys_cmsis[2];
+uint32_t sys_cache[4];
+
 static void deepsleep() __attribute__ ((noinline));
+static void print_x32(uint16_t color, void *out_fb, uint32_t val) __attribute__ ((noinline));
 
 /**
   * @brief  The application entry point.
@@ -126,6 +131,14 @@ int main(void)
 	SCB_EnableDCache();
 
 #endif
+	/* Collect some system regs of interest */
+	sys_cmsis[0] = __get_CONTROL();
+	sys_cmsis[1] = __get_BASEPRI();
+	sys_cache[0] = SCB->CLIDR;                  /*!< Offset: 0x078 (R/ )  Cache Level ID register */
+	sys_cache[1] = SCB->CTR;                    /*!< Offset: 0x07C (R/ )  Cache Type register */
+	sys_cache[2] = SCB->CCSIDR;                 /*!< Offset: 0x080 (R/ )  Cache Size ID Register */
+	sys_cache[3] = SCB->CSSELR;                 /*!< Offset: 0x084 (R/W)  Cache Size Selection Register */
+
 	lcd_init(&hspi2);
 	memset(framebuffer, 0, sizeof(framebuffer));
 
@@ -2159,13 +2172,17 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 
-			for (uint32_t di = 0, ch = ii; di < 8; di++, ch >>= 4) {
-				void * const out = framebuffer[i & 1] + 320 * (240 - 16) / 2 + (320 + 4 * 8) / 2 - 8 * di;
-				if ((ch & 0xf) > 9)
-					pixmap8x16(~color, out, &fnt_wang_8x16 + 16 * ('A' - 10 + (ch & 0xf)));
-				else
-					pixmap8x16(~color, out, &fnt_wang_8x16 + 16 * ('0' + (ch & 0xf)));
-			}
+			void * const out = framebuffer[i & 1] + 320 * (240 - 16) / 2 + (320 - 8 * 8) / 2;
+			print_x32(~color, out, ii);
+
+			/* Print current privilege and cache caps */
+			print_x32(~color, framebuffer[i & 1] + 320 *  0, sys_cmsis[0]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16, sys_cmsis[1]);
+
+			print_x32(~color, framebuffer[i & 1] + 320 * 32, sys_cache[0]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 48, sys_cache[1]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 64, sys_cache[2]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 80, sys_cache[3]);
 		}
 
 		/* Flip back and front framebuffers at vblank */
@@ -2191,6 +2208,24 @@ static void deepsleep()
 
 #endif
 	HAL_NVIC_SystemReset();
+}
+
+/**
+  * @brief Print 32-bit hexadecimal to a location in a fixed-geometry framebuffer
+  * @param color: Foreground color to use
+  * @param out_fb: Ptr in a fixed-geometry framebuffer
+  * @param val: Value to print
+  * @retval None
+  */
+static void print_x32(uint16_t color, void *out_fb, uint32_t val)
+{
+	for (uint32_t di = 0, ch = val; di < 8; di++, ch >>= 4) {
+		void * const out = (uint16_t *)out_fb + 8 * 7 - 8 * di;
+		if ((ch & 0xf) > 9)
+			pixmap8x16(color, out, &fnt_wang_8x16 + 16 * ('A' - 10 + (ch & 0xf)));
+		else
+			pixmap8x16(color, out, &fnt_wang_8x16 + 16 * ('0' + (ch & 0xf)));
+	}
 }
 
 /**
