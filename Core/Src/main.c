@@ -59,8 +59,9 @@ int32_t mul_sin(int16_t multiplicand, uint16_t ticks)
 	/*
 	  multiply by sine
 	  r0.w: multiplicand
-	  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
-	  returns: r0.l: sine product as fx16.15 (r0[31] replicates sign)
+	  r1: angle ticks -- [0, 2pi) -> [0, 256)
+	  returns: r0: sine product as fx16.15 (r0[31] replicates sign)
+	  clobbers: r12
 	*/
 		"ands	r1,r1,#0xff\n\t"
 		"cmp	r1,#0x80\n\t"
@@ -103,8 +104,9 @@ int32_t mul_sin2(int16_t multiplicand, uint16_t ticks)
 	/*
 	  multiply by sine
 	  r0.w: multiplicand
-	  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
-	  returns: r0.l: sine product as fx16.15 (r0[31] replicates sign)
+	  r1: angle ticks -- [0, 2pi) -> [0, 256)
+	  returns: r0: sine product as fx16.15 (r0[31] replicates sign)
+	  clobbers: r12
 	*/
 		"ands	r1,r1,#0xff\n\t"
 		"cmp	r1,#0x80\n\t"
@@ -151,8 +153,9 @@ int32_t mul_cos(int16_t multiplicand, uint16_t ticks)
 	/*
 	  multiply by cosine
 	  r0.w: multiplicand
-	  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
-	  returns; r0.l: cosine product as fx16.15 (r0[31] replicates sign)
+	  r1: angle ticks -- [0, 2pi) -> [0, 256)
+	  returns; r0: cosine product as fx16.15 (r0[31] replicates sign)
+	  clobbers: r12
 	*/
 		"adds	r1,r1,#0x40\n\t"
 		"b	mul_sin\n\t"
@@ -167,8 +170,9 @@ int32_t mul_cos2(int16_t multiplicand, uint16_t ticks)
 	/*
 	  multiply by cosine
 	  r0.w: multiplicand
-	  r1.w: angle ticks -- [0, 2pi) -> [0, 256)
-	  returns; r0.l: cosine product as fx16.15 (r0[31] replicates sign)
+	  r1: angle ticks -- [0, 2pi) -> [0, 256)
+	  returns; r0: cosine product as fx16.15 (r0[31] replicates sign)
+	  clobbers: r12
 	*/
 		"adds	r1,r1,#0x40\n\t"
 		"b	mul_sin2\n\t"
@@ -237,7 +241,7 @@ int main(void)
 		}
 		if (buttons & B_A && i - last_press > 7) {
 			last_press = i;
-			alt += alt < 3 ? 1 : 0;
+			alt += alt < 4 ? 1 : 0;
 		}
 		if (buttons & B_B && i - last_press > 7) {
 			last_press = i;
@@ -305,7 +309,7 @@ int main(void)
 				}
 			}
 		}
-		else {
+		else if (alt == 3) {
 			/* Inverse dot circling CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = i;
@@ -330,9 +334,11 @@ int main(void)
 				"stm	%[fb]!,{r0-r7}\n\t"
 				"subs	r8,r8,#1\n\t"
 				"bne	1b\n\t"
-			/* plot a CW-rotating dot */
+			/* plot CW-rotating dots */
+				"movs	r3,#0xff\n\t"
+			"2:\n\t"
 				"movs	r0,#112\n\t"
-				"movs	r1,%[idx]\n\t"
+				"adds	r1,r3,%[idx]\n\t"
 				"bl	mul_sin\n\t"
 				"asrs	r0,r0,#15\n\t"
 				"adcs	r0,r0,#120\n\t"
@@ -340,23 +346,165 @@ int main(void)
 				"smulbb	r2,r1,r0\n\t"
 
 				"movs	r0,#112\n\t"
-				"movs	r1,%[idx]\n\t"
+				"adds	r1,r3,%[idx]\n\t"
 				"bl	mul_cos\n\t"
 				"asrs	r0,r0,#15\n\t"
 				"adcs	r1,r0,#160\n\t"
 
-				"ldmia	sp!,{%[color],%[fb]}\n\t"
+				"ldmia	sp,{%[color],%[fb]}\n\t"
 
 				"adds	r2,r2,%[fb]\n\t"
 				"mvns	%[color],%[color]\n\t"
 				"str	%[color],[r2,r1,lsl #1]\n\t"
 				"adds	r2,r2,#640\n\t"
 				"str	%[color],[r2,r1,lsl #1]\n\t"
+
+				"subs	r3,r3,#4\n\t"
+				"bcs	2b\n\t"
+
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
 			: /* none */
 			: [color] "r" (val_color),
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
+		}
+		else {
+			/* Inverse line circling CW on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = i;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+			/* plot lines */
+				"ldr	r8,[sp]\n\t"
+				"mvns	r8,r8\n\t"
+				"movs	r10,#0xff\n\t"
+			"2:\n\t"
+				"movs	r0,#112\n\t"
+				"rsbs	r1,r10,#0xff\n\t"
+				"adds	r1,r1,%[idx]\n\t"
+				"bl	mul_sin\n\t"
+				"asrs	r0,r0,#15\n\t"
+				"adcs	r2,r0,#120\n\t"
+				"rsbs	r3,r0,#120\n\t"
+
+				"movs	r0,#112\n\t"
+				"rsbs	r1,r10,#0xff\n\t"
+				"adds	r1,r1,%[idx]\n\t"
+				"bl	mul_cos\n\t"
+				"asrs	r0,r0,#15\n\t"
+				"adcs	r4,r0,#160\n\t"
+
+				"movs	r1,r2\n\t"
+				"rsbs	r2,r0,#160\n\t"
+				"movs	r0,r4\n\t"
+				"ldr	%[fb],[sp,#4]\n\t"
+				"bl	line\n\t"
+
+				"subs	r10,r10,#8\n\t"
+				"bcs	2b\n\t"
+
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+				"b	done\n\t"
+			/*
+			  draw a line in a statically-sized fb; last pixel omitted
+			  r0: x0
+			  r1: y0
+			  r2: x1
+			  r3: y1
+			  r8: color (splatted to pixel word)
+			  r12: fb ptr
+			  clobbers: r4-r7, r9
+			*/
+			"line:\n\t"
+			/* compute x0,y0 addr in fb */
+				"movs	r4,#640\n\t"
+				"smulbb	r4,r4,r1\n\t"
+				"adds	r12,r12,r4\n\t"
+				"adds	r12,r12,r0,lsl #1\n\t"
+
+				"movs	r6,#1\n\t"
+				"subs	r4,r2,r0\n\t" /* dx */
+				"bge	dx_done\n\t"
+				"negs	r4,r4\n\t"
+				"negs	r6,r6\n\t"
+			"dx_done:\n\t"
+				"movs	r7,#1\n\t"
+				"movs	r9,#640\n\t"
+				"subs	r5,r3,r1\n\t" /* dy */
+				"bge	dy_done\n\t"
+				"negs	r5,r5\n\t"
+				"negs	r7,r7\n\t"
+				"negs	r9,r9\n\t"
+			"dy_done:\n\t"
+				"cmp	r5,r4\n\t"
+				"bge	high_slope\n\t"
+			/* low slope: iterate along x */
+				"lsls	r5,r5,#1\n\t" /* 2 dy */
+				"movs	r3,r5\n\t"
+				"subs	r3,r3,r4\n\t" /* 2 dy - dx */
+				"lsls	r4,r4,#1\n\t" /* 2 dx */
+			"loop_x:\n\t"
+				"strh	r8,[r12]\n\t"
+			"advance_x:\n\t"
+				"adds	r12,r12,r6,lsl #1\n\t"
+				"adds	r0,r0,r6\n\t"
+				"tst	r3,r3\n\t"
+				"ble	x_done\n\t"
+				"adds	r12,r12,r9\n\t"
+				"subs	r3,r3,r4\n\t"
+			"x_done:\n\t"
+				"adds	r3,r3,r5\n\t"
+				"cmp	r0,r2\n\t"
+				"bne	loop_x\n\t"
+				"bx	lr\n\t"
+			"high_slope:\n\t" /* iterate along y */
+				"lsls	r4,r4,#1\n\t" /* 2 dx */
+				"movs	r2,r4\n\t"
+				"subs	r2,r2,r5\n\t" /* 2 dx - dy */
+				"lsls	r5,r5,#1\n\t" /* 2 dy */
+				"bne	loop_y\n\t"
+				"bx	lr\n\t"
+			"loop_y:\n\t"
+				"strh	r8,[r12]\n\t"
+			"advance_y:\n\t"
+				"adds	r12,r12,r9\n\t"
+				"adds	r1,r1,r7\n\t"
+				"tst	r2,r2\n\t"
+				"ble	y_done\n\t"
+				"adds	r12,r12,r6,lsl #1\n\t"
+				"subs	r2,r2,r5\n\t"
+			"y_done:\n\t"
+				"adds	r2,r2,r4\n\t"
+				"cmp	r1,r3\n\t"
+				"bne	loop_y\n\t"
+				"bx	lr\n\t"
+			"done:"
+			: /* none */
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+			  "r9", "r10", "cc");
 		}
 
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
