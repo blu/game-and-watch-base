@@ -71,7 +71,8 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c
 
 # ASM sources
 ASM_SOURCES =  \
-startup_stm32h7b0xx.s
+startup_stm32h7b0xx.s \
+line.s
 
 
 #######################################
@@ -176,7 +177,7 @@ $(BUILD_DIR)/%.o: %.c Makefile | $(BUILD_DIR)
 	$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.c=.lst)) $< -o $@
 
 $(BUILD_DIR)/%.o: %.s Makefile | $(BUILD_DIR)
-	$(AS) -c $(CFLAGS) $< -o $@
+	$(AS) -c $(CFLAGS) $< -o $@ -Dfb_w=320 -Dfb_h=240
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) Makefile
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
@@ -184,10 +185,10 @@ $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) Makefile
 
 $(BUILD_DIR)/%.hex: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(HEX) $< $@
-	
+
 $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	$(BIN) $< $@	
-	
+
 $(BUILD_DIR):
 	mkdir $@		
 
