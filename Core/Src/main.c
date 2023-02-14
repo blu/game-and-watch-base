@@ -291,25 +291,6 @@ int main(void)
 			}
 		}
 		else if (alt == 2) {
-			for(int y=0, row=0; y < 240; y++, row+=320) {
-				for(int x=0; x < 320; x++) {
-					int32_t off_x = mul_sin(0xf, (x + i * 4) * 4);
-					int32_t off_y = mul_cos(0xf, (y + i * 4) * 4);
-					__asm__ __volatile (
-						"asrs	%[arg_x],%[arg_x],#15\n\t"
-						"adcs	%[arg_x],%[arg_x],#16\n\t"
-						"asrs	%[arg_y],%[arg_y],#15\n\t"
-						"adcs	%[arg_y],%[arg_y],#16\n\t"
-					: [arg_x] "=r" (off_x),
-					  [arg_y] "=r" (off_y)
-					: "0" (off_x),
-					  "1" (off_y));
-
-					framebuffer[i & 1][row+x] = off_x + off_y;
-				}
-			}
-		}
-		else if (alt == 3) {
 			/* Inverse dot circling CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = i;
@@ -369,7 +350,7 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 		}
-		else {
+		else if (alt == 3) {
 			/* Inverse line circling CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = i;
@@ -430,6 +411,25 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
 			  "r9", "r10", "cc");
+		}
+		else {
+			for(int y=0, row=0; y < 240; y++, row+=320) {
+				for(int x=0; x < 320; x++) {
+					int32_t off_x = mul_sin(0xf, (x + i * 4) * 4);
+					int32_t off_y = mul_cos(0xf, (y + i * 4) * 4);
+					__asm__ __volatile (
+						"asrs	%[arg_x],%[arg_x],#15\n\t"
+						"adcs	%[arg_x],%[arg_x],#16\n\t"
+						"asrs	%[arg_y],%[arg_y],#15\n\t"
+						"adcs	%[arg_y],%[arg_y],#16\n\t"
+					: [arg_x] "=r" (off_x),
+					  [arg_y] "=r" (off_y)
+					: "0" (off_x),
+					  "1" (off_y));
+
+					framebuffer[i & 1][row+x] = off_x + off_y;
+				}
+			}
 		}
 
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
