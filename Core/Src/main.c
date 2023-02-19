@@ -179,6 +179,12 @@ int32_t mul_cos2(int16_t multiplicand, uint16_t ticks)
 	);
 }
 
+short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
+	  0, -29,
+	 25,  14,
+	-25,  14,
+};
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -241,7 +247,7 @@ int main(void)
 		}
 		if (buttons & B_A && i - last_press > 7) {
 			last_press = i;
-			alt += alt < 4 ? 1 : 0;
+			alt += alt < 5 ? 1 : 0;
 		}
 		if (buttons & B_B && i - last_press > 7) {
 			last_press = i;
@@ -351,7 +357,7 @@ int main(void)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 		}
 		else if (alt == 3) {
-			/* Inverse line circling CW on color bg */
+			/* Inverse line rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = i;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -405,6 +411,210 @@ int main(void)
 				"bcs	2b\n\t"
 
 				"ldmia	sp!,{%[color],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+			  "r9", "r10", "cc");
+		}
+		else if (alt == 4) {
+			/* Inverse triangle rotating CW on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = i;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[idx],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+
+			/* struct R2 */
+			".equ	R2_x, 0\n\t" /* short */
+			".equ	R2_y, 2\n\t" /* short */
+			".equ	R2_size, 4\n\t"
+
+			/* struct tri */
+			".equ	tri_p0, R2_size * 0\n\t" /* R2 */
+			".equ	tri_p1, R2_size * 1\n\t" /* R2 */
+			".equ	tri_p2, R2_size * 2\n\t" /* R2 */
+			".equ	tri_size, R2_size * 3\n\t"
+
+			/* plot tris */
+				"ldr	r8,=tri_obj_0\n\t"
+				"adds	r9,r8,#tri_size\n\t"
+				"movs	r10,r9\n\t"
+			"20:\n\t"
+				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
+				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"movs	r0,r3\n\t"
+				"movs	r1,%[idx]\n\t"
+				"bl	mul_cos\n\t"
+				"movs	r2,r0\n\t"
+
+				"movs	r0,r4\n\t"
+				"movs	r1,%[idx]\n\t"
+				"bl	mul_sin\n\t"
+				"subs	r2,r2,r0\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r2,r2,#15\n\t"
+				"adcs	r2,r2,#160\n\t"
+
+				"strh	r2,[r9],#2\n\t" /* v_out.x */
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"movs	r0,r3\n\t"
+				"movs	r1,%[idx]\n\t"
+				"bl	mul_sin\n\t"
+				"movs	r2,r0\n\t"
+
+				"movs	r0,r4\n\t"
+				"movs	r1,%[idx]\n\t"
+				"bl	mul_cos\n\t"
+				"adds	r2,r2,r0\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r2,r2,#15\n\t"
+				"adcs	r2,r2,#120\n\t"
+
+				"strh	r2,[r9],#2\n\t" /* v_out.y */
+
+				"cmp	r8,r10\n\t"
+				"bne	20b\n\t"
+
+				"ldr	r8,=tri_obj_0\n\t"
+			"21:\n\t"
+				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
+				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"movs	r0,r3\n\t"
+				"lsls	r1,%[idx],#1\n\t"
+				"bl	mul_cos\n\t"
+				"movs	r2,r0\n\t"
+
+				"movs	r0,r4\n\t"
+				"lsls	r1,%[idx],#1\n\t"
+				"bl	mul_sin\n\t"
+				"subs	r2,r2,r0\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r2,r2,#14\n\t"
+				"adcs	r2,r2,#160\n\t"
+
+				"strh	r2,[r9],#2\n\t" /* v_out.x */
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"movs	r0,r3\n\t"
+				"lsls	r1,%[idx],#1\n\t"
+				"bl	mul_sin\n\t"
+				"movs	r2,r0\n\t"
+
+				"movs	r0,r4\n\t"
+				"lsls	r1,%[idx],#1\n\t"
+				"bl	mul_cos\n\t"
+				"adds	r2,r2,r0\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r2,r2,#14\n\t"
+				"adcs	r2,r2,#120\n\t"
+
+				"strh	r2,[r9],#2\n\t" /* v_out.y */
+
+				"cmp	r8,r10\n\t"
+				"bne	21b\n\t"
+
+				"ldr	r8,=tri_obj_0\n\t"
+			"22:\n\t"
+				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
+				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"movs	r0,r3\n\t"
+				"lsls	r1,%[idx],#2\n\t"
+				"bl	mul_cos\n\t"
+				"movs	r2,r0\n\t"
+
+				"movs	r0,r4\n\t"
+				"lsls	r1,%[idx],#2\n\t"
+				"bl	mul_sin\n\t"
+				"subs	r2,r2,r0\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r2,r2,#13\n\t"
+				"adcs	r2,r2,#160\n\t"
+
+				"strh	r2,[r9],#2\n\t" /* v_out.x */
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"movs	r0,r3\n\t"
+				"lsls	r1,%[idx],#2\n\t"
+				"bl	mul_sin\n\t"
+				"movs	r2,r0\n\t"
+
+				"movs	r0,r4\n\t"
+				"lsls	r1,%[idx],#2\n\t"
+				"bl	mul_cos\n\t"
+				"adds	r2,r2,r0\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r2,r2,#13\n\t"
+				"adcs	r2,r2,#120\n\t"
+
+				"strh	r2,[r9],#2\n\t" /* v_out.y */
+
+				"cmp	r8,r10\n\t"
+				"bne	22b\n\t"
+
+				/* scan-convert the scr-space tri edges */
+				"movs	r11,r9\n\t"
+				"ldr	r8,[sp]\n\t"
+				"mvns	r8,r8\n\t"
+			"3:\n\t"
+				"ldrh	r0,[r10,#tri_p0+R2_x]\n\t"
+				"ldrh	r1,[r10,#tri_p0+R2_y]\n\t"
+				"ldrh	r2,[r10,#tri_p1+R2_x]\n\t"
+				"ldrh	r3,[r10,#tri_p1+R2_y]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"bl	line\n\t"
+
+				"ldrh	r0,[r10,#tri_p1+R2_x]\n\t"
+				"ldrh	r1,[r10,#tri_p1+R2_y]\n\t"
+				"ldrh	r2,[r10,#tri_p2+R2_x]\n\t"
+				"ldrh	r3,[r10,#tri_p2+R2_y]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"bl	line\n\t"
+
+				"ldrh	r0,[r10,#tri_p2+R2_x]\n\t"
+				"ldrh	r1,[r10,#tri_p2+R2_y]\n\t"
+				"ldrh	r2,[r10,#tri_p0+R2_x]\n\t"
+				"ldrh	r3,[r10,#tri_p0+R2_y]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"bl	line\n\t"
+
+				"adds	r10,r10,#tri_size\n\t"
+				"cmp	r10,r11\n\t"
+				"bne	3b\n\t"
+
+				"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
 			: /* none */
 			: [color] "r" (val_color),
 			  [idx] "r" (val_i),
