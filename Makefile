@@ -72,7 +72,9 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c
 # ASM sources
 ASM_SOURCES =  \
 startup_stm32h7b0xx.s \
-line.s
+line.s \
+pixmap.s \
+font.s
 
 
 #######################################

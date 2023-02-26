@@ -179,6 +179,11 @@ int32_t mul_cos2(int16_t multiplicand, uint16_t ticks)
 	);
 }
 
+extern void pixmap8x16(uint16_t color, void *out_fb, void *pixmap);
+extern void pixmap8x8(uint16_t color, void *out_fb, void *pixmap);
+extern uint8_t *fnt_wang_8x16;
+extern uint8_t *fnt_wang_8x8;
+
 short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 	  0, -29,
 	 25,  14,
@@ -247,7 +252,7 @@ int main(void)
 		}
 		if (buttons & B_A && i - last_press > 7) {
 			last_press = i;
-			alt += alt < 5 ? 1 : 0;
+			alt += alt < 7 ? 1 : 0;
 		}
 		if (buttons & B_B && i - last_press > 7) {
 			last_press = i;
@@ -257,7 +262,7 @@ int main(void)
 		if (alt == 0) {
 			/* Checkers of the color */
 			int32_t off = mul_sin(64, i * 4);
-			__asm__ __volatile (
+			__asm__ __volatile__ (
 				"asrs	%[arg],%[arg],#15\n\t"
 				"adcs	%[arg],%[arg],#0\n\t"
 			: [arg] "=r" (off) : "0" (off));
@@ -276,7 +281,7 @@ int main(void)
 			/* Uniform squares of the color */
 			int32_t off_x = mul_sin(64, i * 4);
 			int32_t off_y = mul_cos(128, i * 2);
-			__asm__ __volatile (
+			__asm__ __volatile__ (
 				"asrs	%[arg_x],%[arg_x],#15\n\t"
 				"adcs	%[arg_x],%[arg_x],#0\n\t"
 				"asrs	%[arg_y],%[arg_y],#15\n\t"
@@ -622,12 +627,96 @@ int main(void)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
 			  "r9", "r10", "cc");
 		}
+		else if (alt == 5) {
+			/* Color font 8x16 on black bg */
+			register uint16_t val_color asm ("r0") = 0;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
+
+			void *val_fnt_ptr = fnt_wang_8x16; /* reference to ensure linking */
+			__asm__ __volatile__ (
+				"ldr	%[fnt_ptr],=fnt_wang_8x16"
+			: [fnt_ptr] "=r" (val_fnt_ptr)
+			: "0" (val_fnt_ptr));
+
+			for (int32_t y = 0, ch = i; y < 240 / 16; y++)
+				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
+					pixmap8x16(~color, framebuffer[i & 1] + 320 * 16 * y + 8 * x,
+						val_fnt_ptr + 16 * (ch & 0xff));
+				}
+		}
+		else if (alt == 6) {
+			/* Color font 8x8 on black bg */
+			register uint16_t val_color asm ("r0") = 0;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
+
+			void *val_fnt_ptr = fnt_wang_8x8; /* reference to ensure linking */
+			__asm__ __volatile__ (
+				"ldr	%[fnt_ptr],=fnt_wang_8x8"
+			: [fnt_ptr] "=r" (val_fnt_ptr)
+			: "0" (val_fnt_ptr));
+
+			for (int32_t y = 0, ch = i; y < 240 / 8; y++)
+				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
+					pixmap8x8(~color, framebuffer[i & 1] + 320 * 8 * y + 8 * x,
+						val_fnt_ptr + 8 * (ch & 0xff));
+				}
+		}
 		else {
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
 					int32_t off_x = mul_sin(0xf, (x + i * 4) * 4);
 					int32_t off_y = mul_cos(0xf, (y + i * 4) * 4);
-					__asm__ __volatile (
+					__asm__ __volatile__ (
 						"asrs	%[arg_x],%[arg_x],#15\n\t"
 						"adcs	%[arg_x],%[arg_x],#16\n\t"
 						"asrs	%[arg_y],%[arg_y],#15\n\t"
