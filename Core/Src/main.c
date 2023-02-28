@@ -234,18 +234,27 @@ int main(void)
 
 	uint8_t alt = 0;
 	uint16_t color = 0;
-	uint32_t i = 0, last_press = 0;
+	uint32_t i = 0, last_press = 0, mask = 0x1f, shift = 0;
 
 	while (1) {
 		uint32_t buttons = buttons_get();
 		if(buttons & B_Left) {
-			color = 0x1f << (5 + 6 + 0);
+			/* red */
+			mask = 0x1f;
+			shift = 5 + 6 + 0;
+			color = mask << shift;
 		}
 		if(buttons & B_Right) {
-			color = 0x3f << (5 + 0 + 0);
+			/* green */
+			mask = 0x3f;
+			shift = 5 + 0 + 0;
+			color = mask << shift;
 		}
 		if(buttons & B_Up) {
-			color = 0x1f << (0 + 0 + 0);
+			/* blue */
+			mask = 0x1f;
+			shift = 0 + 0 + 0;
+			color = mask << shift;
 		}
 		if(buttons & B_Down) {
 			color = 0;
@@ -270,15 +279,15 @@ int main(void)
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
 					if(((x + off) & 32) ^ (((y + off) & 32))) {
-						framebuffer[i & 1][row+x] = color;
+						framebuffer[i & 1][row + x] = color;
 					} else {
-						framebuffer[i & 1][row+x] = 0xffff;
+						framebuffer[i & 1][row + x] = 0xffff;
 					}
 				}
 			}
 		}
 		else if (alt == 1) {
-			/* Uniform squares of the color */
+			/* XOR pattern of the color */
 			int32_t off_x = mul_sin(64, i * 4);
 			int32_t off_y = mul_cos(128, i * 2);
 			__asm__ __volatile__ (
@@ -293,11 +302,7 @@ int main(void)
 
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
-					if(((x + off_x) & 32) & (((y + off_y) & 32))) {
-						framebuffer[i & 1][row+x] = color;
-					} else {
-						framebuffer[i & 1][row+x] = 0xffff;
-					}
+					framebuffer[i & 1][row + x] = ((x + off_x ^ y + off_y) >> 2 & mask) << shift;
 				}
 			}
 		}
@@ -712,6 +717,7 @@ int main(void)
 				}
 		}
 		else {
+			/* Blue turtle-shell pattern */
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
 					int32_t off_x = mul_sin(0xf, (x + i * 4) * 4);
