@@ -393,7 +393,7 @@ int main(void)
 			/* plot lines */
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
-				"movs	r10,#0xff\n\t"
+				"movs	r10,#0x7f\n\t"
 			"2:\n\t"
 				"rsbs	r0,r10,#0xff\n\t"
 				"adds	r0,r0,%[idx]\n\t"
