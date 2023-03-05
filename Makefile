@@ -75,6 +75,7 @@ startup_stm32h7b0xx.s \
 line.s \
 pixmap.s \
 font.s \
+trig.s \
 barycentric.s
 
 
