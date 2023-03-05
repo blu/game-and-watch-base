@@ -137,13 +137,13 @@ int main(void)
 		if(buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && i - last_press > 7) {
+		if (buttons & B_A && alt < 8 && i - last_press > 7) {
 			last_press = i;
-			alt += alt < 8 ? 1 : 0;
+			alt++;
 		}
-		if (buttons & B_B && i - last_press > 7) {
+		if (buttons & B_B && alt > 0 && i - last_press > 7) {
 			last_press = i;
-			alt -= alt > 0 ? 1 : 0;
+			alt--;
 		}
 
 		if (alt == 0) {
@@ -770,6 +770,7 @@ int main(void)
 		}
 		else {
 			/* Blue turtle-shell pattern */
+#if 0
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
 					int32_t off_x = 15 * sin2((x + i * 4) * 4);
@@ -787,6 +788,47 @@ int main(void)
 					framebuffer[i & 1][row+x] = off_x + off_y;
 				}
 			}
+#else
+			/* gcc 12.2 codegen emits a few excessive moves from the above */
+			register uint32_t val_i_x16 asm ("r9") = i * 4 * 4;
+			register uint32_t val_y_lim asm ("r10") = (240 + i * 4) * 4;
+			register void *ptr_fb asm ("r11") = framebuffer + (i & 1);
+			__asm__ __volatile__ (
+				"stmdb	sp!,{%[fb]}\n\t"
+				"movs	r4,%[i_x16]\n\t"
+			"1:\n\t"
+				"movs	r5,%[i_x16]\n\t"
+				"adds	r3,%[i_x16],#320 * 4\n\t"
+			"2:\n\t"
+				"movs	r0,r5\n\t"
+				"bl	sin2\n\t"
+				"rsbs	r2,r0,r0,lsl #4\n\t"
+
+				"movs	r0,r4\n\t"
+				"bl	cos2\n\t"
+				"rsbs	r1,r0,r0,lsl #4\n\t"
+
+				"asrs	r2,r2,#15\n\t"
+				"adcs	r2,r2,#16\n\t"
+				"asrs	r1,r1,#15\n\t"
+				"adcs	r1,r1,#16\n\t"
+
+				"adds	r2,r2,r1\n\t"
+				"adds	r5,r5,#4\n\t"
+				"strh	r2,[%[fb]],#2\n\t"
+				"cmp	r3,r5\n\t"
+				"bne	2b\n\t"
+
+				"adds	r4,r4,#4\n\t"
+				"cmp	r4,%[y_lim]\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[fb]}"
+			: /* none */
+			: [i_x16] "r" (val_i_x16),
+			  [y_lim] "r" (val_y_lim),
+			  [fb] "r" (ptr_fb)
+			: "r0", "r1", "r2", "r3", "r4", "r5", "r12", "cc");
+#endif
 		}
 
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
