@@ -74,7 +74,8 @@ ASM_SOURCES =  \
 startup_stm32h7b0xx.s \
 line.s \
 pixmap.s \
-font.s
+font.s \
+barycentric.s
 
 
 #######################################
