@@ -795,17 +795,18 @@ int main(void)
 			register void *ptr_fb asm ("r11") = framebuffer + (i & 1);
 			__asm__ __volatile__ (
 				"stmdb	sp!,{%[fb]}\n\t"
+				"ldr	r12,=cosLUT15_128 - 2\n\t"
 				"movs	r4,%[i_x16]\n\t"
 			"1:\n\t"
 				"movs	r5,%[i_x16]\n\t"
 				"adds	r3,%[i_x16],#320 * 4\n\t"
 			"2:\n\t"
 				"movs	r0,r5\n\t"
-				"bl	sin2\n\t"
+				"bl	sin\n\t"
 				"rsbs	r2,r0,r0,lsl #4\n\t"
 
 				"movs	r0,r4\n\t"
-				"bl	cos2\n\t"
+				"bl	cos\n\t"
 				"rsbs	r1,r0,r0,lsl #4\n\t"
 
 				"asrs	r2,r2,#15\n\t"
