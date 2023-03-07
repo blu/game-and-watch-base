@@ -278,7 +278,9 @@ int main(void)
 				"movs	r10,#0x7f\n\t"
 			"2:\n\t"
 				"rsbs	r0,r10,#0xff\n\t"
+#if 0
 				"adds	r0,r0,%[idx]\n\t"
+#endif
 				"bl	sin2\n\t"
 				"movs	r1,#112\n\t"
 				"muls	r0,r0,r1\n\t"
@@ -287,7 +289,9 @@ int main(void)
 				"rsbs	r3,r0,#120\n\t"
 
 				"rsbs	r0,r10,#0xff\n\t"
+#if 1
 				"adds	r0,r0,%[idx]\n\t"
+#endif
 				"bl	cos2\n\t"
 				"movs	r1,#112\n\t"
 				"muls	r0,r0,r1\n\t"
@@ -298,7 +302,7 @@ int main(void)
 				"rsbs	r2,r0,#160\n\t"
 				"movs	r0,r4\n\t"
 				"ldr	%[fb],[sp,#4]\n\t"
-				"bl	line\n\t"
+				"bl	line_full\n\t"
 
 				"subs	r10,r10,#8\n\t"
 				"bcs	2b\n\t"
