@@ -112,43 +112,49 @@ int main(void)
 
 	uint8_t alt = 0;
 	uint16_t color = 0;
-	uint32_t i = 0, last_press = 0, mask = 0x1f, shift = 0;
+	uint32_t mask = 0x1f, shift = 0;
+	uint32_t i = 0, ii = 0, di = 1, last_press = 0;
 
 	while (1) {
-		uint32_t buttons = buttons_get();
-		if(buttons & B_Left) {
+		const uint32_t buttons = buttons_get();
+		const uint32_t press_lim = 8;
+		if (buttons & B_Left) {
 			/* red */
 			mask = 0x1f;
 			shift = 5 + 6 + 0;
 			color = mask << shift;
 		}
-		if(buttons & B_Right) {
+		if (buttons & B_Right) {
 			/* green */
 			mask = 0x3f;
 			shift = 5 + 0 + 0;
 			color = mask << shift;
 		}
-		if(buttons & B_Up) {
+		if (buttons & B_Up) {
 			/* blue */
 			mask = 0x1f;
 			shift = 0 + 0 + 0;
 			color = mask << shift;
 		}
-		if(buttons & B_Down) {
+		if (buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && alt < 8 && i - last_press > 7) {
+		if (buttons & B_A && alt < 8 && i - last_press > press_lim) {
 			last_press = i;
 			alt++;
 		}
-		if (buttons & B_B && alt > 0 && i - last_press > 7) {
+		if (buttons & B_B && alt > 0 && i - last_press > press_lim) {
 			last_press = i;
 			alt--;
+		}
+		if (buttons & B_PAUSE && i - last_press > press_lim) {
+			last_press = i;
+			di = 1 - di;
 		}
 
 		if (alt == 0) {
 			/* Checkers of the color */
-			int32_t off = 64 * sin2(i * 4);
+			int32_t off = 64 * sin2(ii * 4);
 			__asm__ __volatile__ (
 				"asrs	%[arg],%[arg],#15\n\t"
 				"adcs	%[arg],%[arg],#0\n\t"
@@ -166,8 +172,8 @@ int main(void)
 		}
 		else if (alt == 1) {
 			/* XOR pattern of the color */
-			int32_t off_x = 64 * sin2(i * 4);
-			int32_t off_y = 128 * cos2(i * 2);
+			int32_t off_x = 64 * sin2(ii * 4);
+			int32_t off_y = 128 * cos2(ii * 2);
 			__asm__ __volatile__ (
 				"asrs	%[arg_x],%[arg_x],#15\n\t"
 				"adcs	%[arg_x],%[arg_x],#0\n\t"
@@ -187,7 +193,7 @@ int main(void)
 		else if (alt == 2) {
 			/* Inverse dot circling CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
-			register uint32_t val_i asm ("r11") = i;
+			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
 
 			__asm__ __volatile__ (
@@ -250,7 +256,7 @@ int main(void)
 		else if (alt == 3) {
 			/* Inverse line rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
-			register uint32_t val_i asm ("r11") = i;
+			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
 
 			__asm__ __volatile__ (
@@ -318,7 +324,7 @@ int main(void)
 		else if (alt == 4) {
 			/* Inverse triangle rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
-			register uint32_t val_i asm ("r11") = i;
+			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
 
 			__asm__ __volatile__ (
@@ -522,7 +528,7 @@ int main(void)
 		else if (alt == 5) {
 			/* Inverse triangle rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
-			register uint32_t val_i asm ("r11") = i;
+			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
 
 			__asm__ __volatile__ (
@@ -724,7 +730,7 @@ int main(void)
 			: [fnt_ptr] "=r" (val_fnt_ptr)
 			: "0" (val_fnt_ptr));
 
-			for (int32_t y = 0, ch = i; y < 240 / 16; y++)
+			for (int32_t y = 0, ch = ii; y < 240 / 16; y++)
 				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
 					pixmap8x16(~color, framebuffer[i & 1] + 320 * 16 * y + 8 * x,
 						val_fnt_ptr + 16 * (ch & 0xff));
@@ -766,7 +772,7 @@ int main(void)
 			: [fnt_ptr] "=r" (val_fnt_ptr)
 			: "0" (val_fnt_ptr));
 
-			for (int32_t y = 0, ch = i; y < 240 / 8; y++)
+			for (int32_t y = 0, ch = ii; y < 240 / 8; y++)
 				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
 					pixmap8x8(~color, framebuffer[i & 1] + 320 * 8 * y + 8 * x,
 						val_fnt_ptr + 8 * (ch & 0xff));
@@ -777,8 +783,8 @@ int main(void)
 #if 0
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 				for(int x=0; x < 320; x++) {
-					int32_t off_x = 15 * sin2((x + i * 4) * 4);
-					int32_t off_y = 15 * cos2((y + i * 4) * 4);
+					int32_t off_x = 15 * sin2((x + ii * 4) * 4);
+					int32_t off_y = 15 * cos2((y + ii * 4) * 4);
 					__asm__ __volatile__ (
 						"asrs	%[arg_x],%[arg_x],#15\n\t"
 						"adcs	%[arg_x],%[arg_x],#16\n\t"
@@ -794,8 +800,8 @@ int main(void)
 			}
 #else
 			/* gcc 12.2 codegen emits a few excessive moves from the above */
-			register uint32_t val_i_x16 asm ("r9") = i * 4 * 4;
-			register uint32_t val_y_lim asm ("r10") = (240 + i * 4) * 4;
+			register uint32_t val_i_x16 asm ("r9") = ii * 4 * 4;
+			register uint32_t val_y_lim asm ("r10") = (240 + ii * 4) * 4;
 			register void *ptr_fb asm ("r11") = framebuffer + (i & 1);
 			__asm__ __volatile__ (
 				"stmdb	sp!,{%[fb]}\n\t"
@@ -842,6 +848,7 @@ int main(void)
 		while ((hltdc.Instance->SRCR & LTDC_RELOAD_VERTICAL_BLANKING) != 0) {}
 
 		i++;
+		ii += di;
 	}
 }
 
