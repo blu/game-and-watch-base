@@ -761,18 +761,22 @@ int main(void)
 			/* Blue turtle-shell pattern */
 #if 0
 			for(int y=0, row=0; y < 240; y++, row+=320) {
+					int32_t off_y = 15 * cos2((y + ii * 4) * 4);
+					__asm__ __volatile__ (
+						"asrs	%[arg_y],%[arg_y],#15\n\t"
+						"adcs	%[arg_y],%[arg_y],#16\n\t"
+					: [arg_y] "=r" (off_y)
+					: "0" (off_y)
+					: "cc");
+
 				for(int x=0; x < 320; x++) {
 					int32_t off_x = 15 * sin2((x + ii * 4) * 4);
-					int32_t off_y = 15 * cos2((y + ii * 4) * 4);
 					__asm__ __volatile__ (
 						"asrs	%[arg_x],%[arg_x],#15\n\t"
 						"adcs	%[arg_x],%[arg_x],#16\n\t"
-						"asrs	%[arg_y],%[arg_y],#15\n\t"
-						"adcs	%[arg_y],%[arg_y],#16\n\t"
-					: [arg_x] "=r" (off_x),
-					  [arg_y] "=r" (off_y)
-					: "0" (off_x),
-					  "1" (off_y));
+					: [arg_x] "=r" (off_x)
+					: "0" (off_x)
+					: "cc");
 
 					framebuffer[i & 1][row+x] = off_x + off_y;
 				}
@@ -787,21 +791,23 @@ int main(void)
 				"ldr	r12,=cosLUT15_128 - 2\n\t"
 				"movs	r4,%[i_x16]\n\t"
 			"1:\n\t"
+				"movs	r0,r4\n\t"
+				"bl	cos\n\t"
+				"rsbs	r1,r0,r0,lsl #4\n\t"
+
+				"asrs	r1,r1,#15\n\t"
+				"adcs	r1,r1,#16\n\t"
+
 				"movs	r5,%[i_x16]\n\t"
 				"adds	r3,%[i_x16],#320 * 4\n\t"
+				".balign 32\n\t"
 			"2:\n\t"
 				"movs	r0,r5\n\t"
 				"bl	sin\n\t"
 				"rsbs	r2,r0,r0,lsl #4\n\t"
 
-				"movs	r0,r4\n\t"
-				"bl	cos\n\t"
-				"rsbs	r1,r0,r0,lsl #4\n\t"
-
 				"asrs	r2,r2,#15\n\t"
 				"adcs	r2,r2,#16\n\t"
-				"asrs	r1,r1,#15\n\t"
-				"adcs	r1,r1,#16\n\t"
 
 				"adds	r2,r2,r1\n\t"
 				"adds	r5,r5,#4\n\t"
