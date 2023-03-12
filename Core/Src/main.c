@@ -51,9 +51,6 @@ static void MX_OCTOSPI1_Init(void);
 static void MX_SAI1_Init(void);
 static void MX_NVIC_Init(void);
 
-extern int32_t mul_sin(int16_t multiplicand, uint16_t ticks);
-extern int32_t mul_cos(int16_t multiplicand, uint16_t ticks);
-
 extern int32_t sin2(uint16_t ticks);
 extern int32_t cos2(uint16_t ticks);
 
@@ -359,130 +356,116 @@ int main(void)
 			".equ	tri_size, R2_size * 3\n\t"
 
 			/* plot tris */
+			/* transform obj -> scr */
+				/* preload cos(idx * 1) */
+				"lsls	r0,%[idx],#0\n\t"
+				"bl	cos2\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx * 1) */
+				"lsls	r0,%[idx],#0\n\t"
+				"bl	sin2\n\t"
+
 				"ldr	r8,=tri_obj_0\n\t"
 				"adds	r9,r8,#tri_size\n\t"
 				"movs	r10,r9\n\t"
 			"20:\n\t"
-				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
-				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
 
 				/* transform vertex x-coord: cos * x - sin * y */
-				"movs	r0,r3\n\t"
-				"movs	r1,%[idx]\n\t"
-				"bl	mul_cos\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"movs	r1,%[idx]\n\t"
-				"bl	mul_sin\n\t"
-				"subs	r2,r2,r0\n\t"
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#15\n\t"
-				"adcs	r2,r2,#160\n\t"
-
-				"strh	r2,[r9],#2\n\t" /* v_out.x */
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#160\n\t"
 
 				/* transform vertex y-coord: sin * x + cos * y */
-				"movs	r0,r3\n\t"
-				"movs	r1,%[idx]\n\t"
-				"bl	mul_sin\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"movs	r1,%[idx]\n\t"
-				"bl	mul_cos\n\t"
-				"adds	r2,r2,r0\n\t"
+				"mul	r5,r0,r2\n\t"
+				"mul 	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#15\n\t"
-				"adcs	r2,r2,#120\n\t"
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#120\n\t"
 
-				"strh	r2,[r9],#2\n\t" /* v_out.y */
+				"strh	r4,[r9],#2\n\t" /* v_out.x */
+				"strh	r5,[r9],#2\n\t" /* v_out.y */
 
 				"cmp	r8,r10\n\t"
 				"bne	20b\n\t"
 
+				/* preload cos(idx * 2) */
+				"lsls	r0,%[idx],#1\n\t"
+				"bl	cos2\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx * 2) */
+				"lsls	r0,%[idx],#1\n\t"
+				"bl	sin2\n\t"
+
 				"ldr	r8,=tri_obj_0\n\t"
 			"21:\n\t"
-				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
-				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
 
 				/* transform vertex x-coord: cos * x - sin * y */
-				"movs	r0,r3\n\t"
-				"lsls	r1,%[idx],#1\n\t"
-				"bl	mul_cos\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"lsls	r1,%[idx],#1\n\t"
-				"bl	mul_sin\n\t"
-				"subs	r2,r2,r0\n\t"
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#14\n\t"
-				"adcs	r2,r2,#160\n\t"
-
-				"strh	r2,[r9],#2\n\t" /* v_out.x */
+				"asrs	r4,r4,#14\n\t"
+				"adcs	r4,r4,#160\n\t"
 
 				/* transform vertex y-coord: sin * x + cos * y */
-				"movs	r0,r3\n\t"
-				"lsls	r1,%[idx],#1\n\t"
-				"bl	mul_sin\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"lsls	r1,%[idx],#1\n\t"
-				"bl	mul_cos\n\t"
-				"adds	r2,r2,r0\n\t"
+				"mul	r5,r0,r2\n\t"
+				"mul 	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#14\n\t"
-				"adcs	r2,r2,#120\n\t"
+				"asrs	r5,r5,#14\n\t"
+				"adcs	r5,r5,#120\n\t"
 
-				"strh	r2,[r9],#2\n\t" /* v_out.y */
+				"strh	r4,[r9],#2\n\t" /* v_out.x */
+				"strh	r5,[r9],#2\n\t" /* v_out.y */
 
 				"cmp	r8,r10\n\t"
 				"bne	21b\n\t"
 
+				/* preload cos(idx * 4) */
+				"lsls	r0,%[idx],#2\n\t"
+				"bl	cos2\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx * 4) */
+				"lsls	r0,%[idx],#2\n\t"
+				"bl	sin2\n\t"
+
 				"ldr	r8,=tri_obj_0\n\t"
 			"22:\n\t"
-				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
-				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
 
 				/* transform vertex x-coord: cos * x - sin * y */
-				"movs	r0,r3\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_cos\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_sin\n\t"
-				"subs	r2,r2,r0\n\t"
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#13\n\t"
-				"adcs	r2,r2,#160\n\t"
-
-				"strh	r2,[r9],#2\n\t" /* v_out.x */
+				"asrs	r4,r4,#13\n\t"
+				"adcs	r4,r4,#160\n\t"
 
 				/* transform vertex y-coord: sin * x + cos * y */
-				"movs	r0,r3\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_sin\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_cos\n\t"
-				"adds	r2,r2,r0\n\t"
+				"mul	r5,r0,r2\n\t"
+				"mul 	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#13\n\t"
-				"adcs	r2,r2,#120\n\t"
+				"asrs	r5,r5,#13\n\t"
+				"adcs	r5,r5,#120\n\t"
 
-				"strh	r2,[r9],#2\n\t" /* v_out.y */
+				"strh	r4,[r9],#2\n\t" /* v_out.x */
+				"strh	r5,[r9],#2\n\t" /* v_out.y */
 
 				"cmp	r8,r10\n\t"
 				"bne	22b\n\t"
@@ -569,46 +552,42 @@ int main(void)
 			".equ	pb_size, R2_size * 2 + 4\n\t"
 
 			/* plot tris */
+			/* transform obj -> scr */
+				/* preload cos(idx * 4) */
+				"lsls	r0,%[idx],#2\n\t"
+				"bl	cos2\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx * 4) */
+				"lsls	r0,%[idx],#2\n\t"
+				"bl	sin2\n\t"
+
 				"ldr	r8,=tri_obj_0\n\t"
 				"adds	r9,r8,#tri_size\n\t"
 				"movs	r10,r9\n\t"
 			"2:\n\t"
-				"ldrh	r3,[r8],#2\n\t" /* v_in.x */
-				"ldrh	r4,[r8],#2\n\t" /* v_in.y */
+				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
 
 				/* transform vertex x-coord: cos * x - sin * y */
-				"movs	r0,r3\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_cos\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_sin\n\t"
-				"subs	r2,r2,r0\n\t"
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#13\n\t"
-				"adcs	r2,r2,#160\n\t"
-
-				"strh	r2,[r9],#2\n\t" /* v_out.x */
+				"asrs	r4,r4,#13\n\t"
+				"adcs	r4,r4,#160\n\t"
 
 				/* transform vertex y-coord: sin * x + cos * y */
-				"movs	r0,r3\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_sin\n\t"
-				"movs	r2,r0\n\t"
-
-				"movs	r0,r4\n\t"
-				"lsls	r1,%[idx],#2\n\t"
-				"bl	mul_cos\n\t"
-				"adds	r2,r2,r0\n\t"
+				"mul	r5,r0,r2\n\t"
+				"mul 	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
-				"asrs	r2,r2,#13\n\t"
-				"adcs	r2,r2,#120\n\t"
+				"asrs	r5,r5,#13\n\t"
+				"adcs	r5,r5,#120\n\t"
 
-				"strh	r2,[r9],#2\n\t" /* v_out.y */
+				"strh	r4,[r9],#2\n\t" /* v_out.x */
+				"strh	r5,[r9],#2\n\t" /* v_out.y */
 
 				"cmp	r8,r10\n\t"
 				"bne	2b\n\t"
