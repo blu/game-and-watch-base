@@ -61,24 +61,24 @@ cos16:
 
 	.size cos16, . - cos16
 
-	.section .text.sin2
-	.weak sin2
-	.type sin2, %function
+	.section .text.sin15
+	.weak sin15
+	.type sin15, %function
 
 // get sine
 // r0: angle ticks -- [0, 2pi) -> [0, 256)
 // returns; r0: sine as fx16.15 (r0[31] replicates sign)
 // clobbers: r12
 
-sin2:
+sin15:
 	subs	r0,r0,#0x40
-	b	cos2
+	b	cos15
 
-	.size sin2, . - sin2
+	.size sin15, . - sin15
 
-	.section .text.cos2
-	.weak cos2
-	.type cos2, %function
+	.section .text.cos15
+	.weak cos15
+	.type cos15, %function
 
 // get cosine
 // r0: angle ticks -- [0, 2pi) -> [0, 256)
@@ -86,7 +86,7 @@ sin2:
 // clobbers: r12
 
 	.balign 32
-cos2:
+cos15:
 	ands	r0,r0,#0xff
 	bne	.Lnonzero
 	movs	r0,#0x8000
@@ -120,7 +120,7 @@ cos2:
 	.short -0x776C, -0x7885, -0x798A, -0x7A7D, -0x7B5D, -0x7C2A, -0x7CE4, -0x7D8A
 	.short -0x7E1E, -0x7E9D, -0x7F0A, -0x7F62, -0x7FA7, -0x7FD9, -0x7FF6, 0x8000
 
-	.size cos2, . - cos2
+	.size cos15, . - cos15
 
 	.section .text.sin
 	.weak sin

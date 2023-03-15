@@ -51,8 +51,8 @@ static void MX_OCTOSPI1_Init(void);
 static void MX_SAI1_Init(void);
 static void MX_NVIC_Init(void);
 
-extern int32_t sin2(uint16_t ticks);
-extern int32_t cos2(uint16_t ticks);
+extern int32_t sin15(uint16_t ticks);
+extern int32_t cos15(uint16_t ticks);
 extern int32_t sin16(uint16_t ticks);
 extern int32_t cos16(uint16_t ticks);
 
@@ -153,7 +153,7 @@ int main(void)
 
 		if (alt == 0) {
 			/* Checkers of the color */
-			int32_t off = 64 * sin2(ii * 4);
+			int32_t off = 64 * sin15(ii * 4);
 			__asm__ __volatile__ (
 				"asrs	%[arg],%[arg],#15\n\t"
 				"adcs	%[arg],%[arg],#0\n\t"
@@ -171,8 +171,8 @@ int main(void)
 		}
 		else if (alt == 1) {
 			/* XOR pattern of the color */
-			int32_t off_x = 64 * sin2(ii * 4);
-			int32_t off_y = 128 * cos2(ii * 2);
+			int32_t off_x = 64 * sin15(ii * 4);
+			int32_t off_y = 128 * cos15(ii * 2);
 			__asm__ __volatile__ (
 				"asrs	%[arg_x],%[arg_x],#15\n\t"
 				"adcs	%[arg_x],%[arg_x],#0\n\t"
@@ -218,7 +218,7 @@ int main(void)
 				"movs	r3,#0xff\n\t"
 			"2:\n\t"
 				"adds	r0,r3,%[idx]\n\t"
-				"bl	sin2\n\t"
+				"bl	sin15\n\t"
 				"movs	r1,#112\n\t"
 				"muls	r0,r0,r1\n\t"
 				"asrs	r0,r0,#15\n\t"
@@ -228,7 +228,7 @@ int main(void)
 				"smulbb	r2,r1,r0\n\t"
 
 				"adds	r0,r3,%[idx]\n\t"
-				"bl	cos2\n\t"
+				"bl	cos15\n\t"
 				"movs	r1,#112\n\t"
 				"muls	r0,r0,r1\n\t"
 				"asrs	r0,r0,#15\n\t"
@@ -286,7 +286,7 @@ int main(void)
 #if 0
 				"adds	r0,r0,%[idx]\n\t"
 #endif
-				"bl	sin2\n\t"
+				"bl	sin15\n\t"
 				"movs	r1,#112\n\t"
 				"muls	r0,r0,r1\n\t"
 				"asrs	r0,r0,#15\n\t"
@@ -297,7 +297,7 @@ int main(void)
 #if 1
 				"adds	r0,r0,%[idx]\n\t"
 #endif
-				"bl	cos2\n\t"
+				"bl	cos15\n\t"
 				"movs	r1,#112\n\t"
 				"muls	r0,r0,r1\n\t"
 				"asrs	r0,r0,#15\n\t"
@@ -361,11 +361,11 @@ int main(void)
 			/* transform obj -> scr */
 				/* preload cos(idx * 1) */
 				"lsls	r0,%[idx],#0\n\t"
-				"bl	cos2\n\t"
+				"bl	cos15\n\t"
 				"movs	r1,r0\n\t"
 				/* preload sin(idx * 1) */
 				"lsls	r0,%[idx],#0\n\t"
-				"bl	sin2\n\t"
+				"bl	sin15\n\t"
 
 				"ldr	r8,=tri_obj_0\n\t"
 				"adds	r9,r8,#tri_size\n\t"
@@ -400,11 +400,11 @@ int main(void)
 
 				/* preload cos(idx * 2) */
 				"lsls	r0,%[idx],#1\n\t"
-				"bl	cos2\n\t"
+				"bl	cos15\n\t"
 				"movs	r1,r0\n\t"
 				/* preload sin(idx * 2) */
 				"lsls	r0,%[idx],#1\n\t"
-				"bl	sin2\n\t"
+				"bl	sin15\n\t"
 
 				"ldr	r8,=tri_obj_0\n\t"
 			"21:\n\t"
@@ -437,11 +437,11 @@ int main(void)
 
 				/* preload cos(idx * 4) */
 				"lsls	r0,%[idx],#2\n\t"
-				"bl	cos2\n\t"
+				"bl	cos15\n\t"
 				"movs	r1,r0\n\t"
 				/* preload sin(idx * 4) */
 				"lsls	r0,%[idx],#2\n\t"
-				"bl	sin2\n\t"
+				"bl	sin15\n\t"
 
 				"ldr	r8,=tri_obj_0\n\t"
 			"22:\n\t"
@@ -557,11 +557,11 @@ int main(void)
 			/* transform obj -> scr */
 				/* preload cos(idx * 4) */
 				"lsls	r0,%[idx],#2\n\t"
-				"bl	cos2\n\t"
+				"bl	cos15\n\t"
 				"movs	r1,r0\n\t"
 				/* preload sin(idx * 4) */
 				"lsls	r0,%[idx],#2\n\t"
-				"bl	sin2\n\t"
+				"bl	sin15\n\t"
 
 				"ldr	r8,=tri_obj_0\n\t"
 				"adds	r9,r8,#tri_size\n\t"
