@@ -17,7 +17,7 @@ sin16:
 	ands	r0,r0,#0xff
 	cmp	r0,#0x80
 	bcc	.Lsign_done
-	movs	r1,#-1
+	negs	r1,r1
 	subs	r0,r0,#0x80
 .Lsign_done:
 	cmp	r0,#0x40
