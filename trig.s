@@ -2,66 +2,64 @@
 	.cpu cortex-m7
 	.thumb
 
-	.section .text.mul_sin
-	.weak mul_sin
-	.type mul_sin, %function
+	.section .text.sin16
+	.weak sin16
+	.type sin16, %function
 
-// multiply by sine
-// r0.w: multiplicand
-// r1: angle ticks -- [0, 2pi) -> [0, 256)
-// returns: r0: sine product as fx16.15 (r0[31] replicates sign)
-// clobbers: r12
+// get sine
+// r0: angle ticks -- [0, 2pi) -> [0, 256)
+// returns: r0: sine as fx16.16
+// clobbers: r1, r12
 
 	.balign 32
-mul_sin:
-	ands	r1,r1,#0xff
-	cmp	r1,#0x80
+sin16:
+	movs	r1,#1
+	ands	r0,r0,#0xff
+	cmp	r0,#0x80
 	bcc	.Lsign_done
-	negs	r0,r0
-	subs	r1,r1,#0x80
+	movs	r1,#-1
+	subs	r0,r0,#0x80
 .Lsign_done:
-	cmp	r1,#0x40
+	cmp	r0,#0x40
 	bcc	.Lfetch
 	bne	.Lnot_maximum
-	sxth	r0,r0
-	lsls	r0,r0,#15
-	bx	lr
+	movs	r0,#0x10000
+	b	.Lcorr_sign
 .Lnot_maximum:
-	subs	r1,r1,#0x80
-	negs	r1,r1
+	rsbs	r0,r0,#0x80
 .Lfetch:
-	adr	r12,.LsinLUT15_64
-	ldrh	r1,[r12,r1,lsl #1]
-	smulbb	r0,r0,r1
+	adr	r12,.LsinLUT16_64
+	ldrh	r0,[r12,r0,lsl #1]
+.Lcorr_sign:
+	muls	r0,r0,r1
 	bx	lr
 	.balign 32
-.LsinLUT15_64:
-	.short 0x0000, 0x0324, 0x0648, 0x096B, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2
-	.short 0x18F9, 0x1C0C, 0x1F1A, 0x2224, 0x2528, 0x2827, 0x2B1F, 0x2E11
-	.short 0x30FC, 0x33DF, 0x36BA, 0x398D, 0x3C57, 0x3F17, 0x41CE, 0x447B
-	.short 0x471D, 0x49B4, 0x4C40, 0x4EC0, 0x5134, 0x539B, 0x55F6, 0x5843
-	.short 0x5A82, 0x5CB4, 0x5ED7, 0x60EC, 0x62F2, 0x64E9, 0x66D0, 0x68A7
-	.short 0x6A6E, 0x6C24, 0x6DCA, 0x6F5F, 0x70E3, 0x7255, 0x73B6, 0x7505
-	.short 0x7642, 0x776C, 0x7885, 0x798A, 0x7A7D, 0x7B5D, 0x7C2A, 0x7CE4
-	.short 0x7D8A, 0x7E1E, 0x7E9D, 0x7F0A, 0x7F62, 0x7FA7, 0x7FD9, 0x7FF6
+.LsinLUT16_64:
+	.short 0x0000, 0x0648, 0x0C90, 0x12D5, 0x1918, 0x1F56, 0x2590, 0x2BC4
+	.short 0x31F1, 0x3817, 0x3E34, 0x4447, 0x4A50, 0x504D, 0x563E, 0x5C22
+	.short 0x61F8, 0x67BE, 0x6D74, 0x731A, 0x78AD, 0x7E2F, 0x839C, 0x88F6
+	.short 0x8E3A, 0x9368, 0x9880, 0x9D80, 0xA268, 0xA736, 0xABEB, 0xB086
+	.short 0xB505, 0xB968, 0xBDAF, 0xC1D8, 0xC5E4, 0xC9D1, 0xCD9F, 0xD14D
+	.short 0xD4DB, 0xD848, 0xDB94, 0xDEBE, 0xE1C6, 0xE4AA, 0xE76C, 0xEA0A
+	.short 0xEC83, 0xEED9, 0xF109, 0xF314, 0xF4FA, 0xF6BA, 0xF854, 0xF9C8
+	.short 0xFB15, 0xFC3B, 0xFD3B, 0xFE13, 0xFEC4, 0xFF4E, 0xFFB1, 0xFFEC
 
-	.size mul_sin, . - mul_sin
+	.size sin16, . - sin16
 
-	.section .text.mul_cos
-	.weak mul_cos
-	.type mul_cos, %function
+	.section .text.cos16
+	.weak cos16
+	.type cos16, %function
 
-// multiply by cosine
-// r0.w: multiplicand
-// r1: angle ticks -- [0, 2pi) -> [0, 256)
-// returns; r0: cosine product as fx16.15 (r0[31] replicates sign)
-// clobbers: r12
+// get cosine
+// r0: angle ticks -- [0, 2pi) -> [0, 256)
+// returns; r0: cosine as fx16.16
+// clobbers: r1, r12
 
-mul_cos:
-	adds	r1,r1,#0x40
-	b	mul_sin
+cos16:
+	adds	r0,r0,#0x40
+	b	sin16
 
-	.size mul_cos, . - mul_cos
+	.size cos16, . - cos16
 
 	.section .text.sin2
 	.weak sin2

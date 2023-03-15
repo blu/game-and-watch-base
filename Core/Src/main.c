@@ -53,6 +53,8 @@ static void MX_NVIC_Init(void);
 
 extern int32_t sin2(uint16_t ticks);
 extern int32_t cos2(uint16_t ticks);
+extern int32_t sin16(uint16_t ticks);
+extern int32_t cos16(uint16_t ticks);
 
 extern void pixmap8x16(uint16_t color, void *out_fb, void *pixmap);
 extern void pixmap8x8(uint16_t color, void *out_fb, void *pixmap);
@@ -759,20 +761,20 @@ int main(void)
 		}
 		else {
 			/* Blue turtle-shell pattern */
-#if 0
+#if 1
 			for(int y=0, row=0; y < 240; y++, row+=320) {
-					int32_t off_y = 15 * cos2((y + ii * 4) * 4);
+					int32_t off_y = 15 * cos16((y + ii * 4) * 4);
 					__asm__ __volatile__ (
-						"asrs	%[arg_y],%[arg_y],#15\n\t"
+						"asrs	%[arg_y],%[arg_y],#16\n\t"
 						"adcs	%[arg_y],%[arg_y],#16\n\t"
 					: [arg_y] "=r" (off_y)
 					: "0" (off_y)
 					: "cc");
 
 				for(int x=0; x < 320; x++) {
-					int32_t off_x = 15 * sin2((x + ii * 4) * 4);
+					int32_t off_x = 15 * sin16((x + ii * 4) * 4);
 					__asm__ __volatile__ (
-						"asrs	%[arg_x],%[arg_x],#15\n\t"
+						"asrs	%[arg_x],%[arg_x],#16\n\t"
 						"adcs	%[arg_x],%[arg_x],#16\n\t"
 					: [arg_x] "=r" (off_x)
 					: "0" (off_x)
