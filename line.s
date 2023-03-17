@@ -143,6 +143,7 @@ line_clip:
 	ble	.LLx_done
 	adds	r12,r12,r9
 	subs	r3,r3,r4
+	adds	r1,r1,r7
 .LLx_done:
 	adds	r3,r3,r5
 	cmp	r0,r2
@@ -168,6 +169,7 @@ line_clip:
 	ble	.LLy_done
 	adds	r12,r12,r6,lsl #1
 	subs	r2,r2,r5
+	adds	r0,r0,r6
 .LLy_done:
 	adds	r2,r2,r4
 	cmp	r1,r3

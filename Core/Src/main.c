@@ -138,7 +138,7 @@ int main(void)
 		if (buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && alt < 8 && i - last_press > press_lim) {
+		if (buttons & B_A && alt < 9 && i - last_press > press_lim) {
 			last_press = i;
 			alt++;
 		}
@@ -385,7 +385,7 @@ int main(void)
 
 				/* transform vertex y-coord: sin * x + cos * y */
 				"mul	r5,r0,r2\n\t"
-				"mul 	r6,r1,r3\n\t"
+				"mul	r6,r1,r3\n\t"
 				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
@@ -422,7 +422,7 @@ int main(void)
 
 				/* transform vertex y-coord: sin * x + cos * y */
 				"mul	r5,r0,r2\n\t"
-				"mul 	r6,r1,r3\n\t"
+				"mul	r6,r1,r3\n\t"
 				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
@@ -459,7 +459,7 @@ int main(void)
 
 				/* transform vertex y-coord: sin * x + cos * y */
 				"mul	r5,r0,r2\n\t"
-				"mul 	r6,r1,r3\n\t"
+				"mul	r6,r1,r3\n\t"
 				"adds	r5,r5,r6\n\t"
 
 				/* fx16.15 -> int16 */
@@ -477,24 +477,24 @@ int main(void)
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
 			"3:\n\t"
-				"ldrh	r0,[r10,#tri_p0+R2_x]\n\t"
-				"ldrh	r1,[r10,#tri_p0+R2_y]\n\t"
-				"ldrh	r2,[r10,#tri_p1+R2_x]\n\t"
-				"ldrh	r3,[r10,#tri_p1+R2_y]\n\t"
+				"ldrsh	r0,[r10,#tri_p0+R2_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p0+R2_y]\n\t"
+				"ldrsh	r2,[r10,#tri_p1+R2_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p1+R2_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line\n\t"
 
-				"ldrh	r0,[r10,#tri_p1+R2_x]\n\t"
-				"ldrh	r1,[r10,#tri_p1+R2_y]\n\t"
-				"ldrh	r2,[r10,#tri_p2+R2_x]\n\t"
-				"ldrh	r3,[r10,#tri_p2+R2_y]\n\t"
+				"ldrsh	r0,[r10,#tri_p1+R2_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p1+R2_y]\n\t"
+				"ldrsh	r2,[r10,#tri_p2+R2_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p2+R2_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line\n\t"
 
-				"ldrh	r0,[r10,#tri_p2+R2_x]\n\t"
-				"ldrh	r1,[r10,#tri_p2+R2_y]\n\t"
-				"ldrh	r2,[r10,#tri_p0+R2_x]\n\t"
-				"ldrh	r3,[r10,#tri_p0+R2_y]\n\t"
+				"ldrsh	r0,[r10,#tri_p2+R2_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p2+R2_y]\n\t"
+				"ldrsh	r2,[r10,#tri_p0+R2_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p0+R2_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line\n\t"
 
@@ -676,6 +676,126 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 6) {
+			/* Inverse wireframe rotating CW on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = ii;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[idx],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+
+			/* struct R3 */
+			".equ	R3_x, 0\n\t" /* short */
+			".equ	R3_y, 2\n\t" /* short */
+			".equ	R3_z, 4\n\t" /* short */
+			".equ	R3_size, 6\n\t"
+
+			/* struct tri */
+			".equ	tri_p0, R3_size * 0\n\t" /* R3 */
+			".equ	tri_p1, R3_size * 1\n\t" /* R3 */
+			".equ	tri_p2, R3_size * 2\n\t" /* R3 */
+			".equ	tri_size, R3_size * 3\n\t"
+
+			/* plot tris */
+			/* transform obj -> scr */
+				/* preload cos(idx) */
+				"movs	r0,%[idx]\n\t"
+				"bl	cos15\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx) */
+				"movs	r0,%[idx]\n\t"
+				"bl	sin15\n\t"
+
+				"ldr	r8,=mesh_obj\n\t"
+				"movw	r9,#tri_size * 2060\n\t" /* tri count: Utah VW Bug */
+				"adds	r9,r9,r8\n\t"
+				"movs	r10,r9\n\t"
+			"2:\n\t"
+				"ldrsh	r2,[r8,#R3_x]\n\t" /* v_in.x */
+				"ldrsh	r3,[r8,#R3_y]\n\t" /* v_in.y */
+				"adds	r8,r8,#R3_size\n\t"
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#160\n\t"
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"mul	r5,r0,r2\n\t"
+				"mul 	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#120\n\t"
+
+				"strh	r4,[r9,#R3_x]\n\t" /* v_out.x */
+				"strh	r5,[r9,#R3_y]\n\t" /* v_out.y */
+				"adds	r9,r9,#R3_size\n\t"
+
+				"cmp	r8,r10\n\t"
+				"bne	2b\n\t"
+
+				/* scan-convert the scr-space tri edges */
+				"movs	r11,r9\n\t"
+				"ldr	r8,[sp]\n\t"
+				"mvns	r8,r8\n\t"
+			"3:\n\t"
+				"ldrsh	r0,[r10,#tri_p0+R3_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p0+R3_y]\n\t"
+				"ldrsh	r2,[r10,#tri_p1+R3_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p1+R3_y]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"bl	line_clip\n\t"
+
+				"ldrsh	r0,[r10,#tri_p1+R3_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p1+R3_y]\n\t"
+				"ldrsh	r2,[r10,#tri_p2+R3_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p2+R3_y]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"bl	line_clip\n\t"
+
+				"ldrsh	r0,[r10,#tri_p2+R3_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p2+R3_y]\n\t"
+				"ldrsh	r2,[r10,#tri_p0+R3_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p0+R3_y]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"bl	line_clip\n\t"
+
+				"adds	r10,r10,#tri_size\n\t"
+				"cmp	r10,r11\n\t"
+				"bne	3b\n\t"
+
+				"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+			  "r9", "r10", "cc");
+		}
+		else if (alt == 7) {
 			/* Color font 8x16 on black bg */
 			register uint16_t val_color asm ("r0") = 0;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -717,7 +837,7 @@ int main(void)
 						val_fnt_ptr + 16 * (ch & 0xff));
 				}
 		}
-		else if (alt == 7) {
+		else if (alt == 8) {
 			/* Color font 8x8 on black bg */
 			register uint16_t val_color asm ("r0") = 0;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
