@@ -1,3 +1,23 @@
+/*
+   Convert an STL file to a raw binary suitable for in-place use
+
+   The STL file is expected to contain a TRIANGLE LIST; the resulting
+   file contains the same triangle list, with coorinates converted
+   to int16_t after multiplication by a scaling factor. The output
+   format is as follows:
+
+   uint16_t face_count
+
+   int16_t face0.vertex0.x
+   int16_t face0.vertex0.y
+   int16_t face0.vertex0.z
+
+   int16_t face0.vertex1.x
+   int16_t face0.vertex1.y
+   int16_t face0.vertex1.z
+   ..
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -73,6 +93,14 @@ int main(int argc, char **argv)
 	unsigned fcount = 0;
 	unsigned vcount = 0;
 
+	/* face count to be overwritten later */
+	if (1 != fwrite(&fcount, sizeof(uint16_t), 1, fout)) {
+		fprintf(stderr, "error: writing to output\n");
+		fclose(fout);
+		fclose(fin);
+		return -7;
+	}
+
 	while ((ret = seekto(fin, "facet")) > 0) {
 		struct {
 			float x, y, z;
@@ -110,6 +138,18 @@ int main(int argc, char **argv)
 			break;
 		}
 		fcount++;
+	}
+
+	if (fcount > (uint16_t) -1U) {
+		fprintf(stderr, "error: face count overflow\n");
+		ret = -8;
+	}
+
+	if (ret >= 0) {
+		if (fseek(fout, 0, SEEK_SET) || 1 != fwrite(&fcount, sizeof(uint16_t), 1, fout)) {
+			fprintf(stderr, "error: writing to output\n");
+			ret = -7;
+		}
 	}
 
 	fclose(fout);

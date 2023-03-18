@@ -724,7 +724,9 @@ int main(void)
 				"bl	sin15\n\t"
 
 				"ldr	r8,=mesh_obj\n\t"
-				"movw	r9,#tri_size * 2060\n\t" /* tri count: Utah VW Bug */
+				"ldrh	r9,[r8],#2\n\t"
+				"movs	r10,#tri_size\n\t"
+				"mul	r9,r9,r10\n\t"
 				"adds	r9,r9,r8\n\t"
 				"movs	r10,r9\n\t"
 			"2:\n\t"
