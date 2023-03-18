@@ -7,10 +7,10 @@
 	.type line, %function
 
 // draw a line in a statically-sized fb; last pixel omitted
-// r0.w: x0 (r0[31:16] replicate sign)
-// r1.w: y0 (r1[31:16] replicate sign)
-// r2.w: x1 (r2[31:16] replicate sign)
-// r3.w: y1 (r3[31:16] replicate sign)
+// r0.w: x0 (bits [31:16] replicate sign)
+// r1.w: y0 (bits [31:16] replicate sign)
+// r2.w: x1 (bits [31:16] replicate sign)
+// r3.w: y1 (bits [31:16] replicate sign)
 // r8: color (splatted to pixel word)
 // r12: fb ptr
 // clobbers: r4-r7, r9
@@ -89,10 +89,10 @@ line:
 	.type line_clip, %function
 
 // draw a line in a statically-sized fb, clipping to fb bounds; last pixel omitted
-// r0.w: x0 (r0[31:16] replicate sign)
-// r1.w: y0 (r1[31:16] replicate sign)
-// r2.w: x1 (r2[31:16] replicate sign)
-// r3.w: y1 (r3[31:16] replicate sign)
+// r0.w: x0 (bits [31:16] replicate sign)
+// r1.w: y0 (bits [31:16] replicate sign)
+// r2.w: x1 (bits [31:16] replicate sign)
+// r3.w: y1 (bits [31:16] replicate sign)
 // r8: color (splatted to pixel word)
 // r12: fb ptr
 // clobbers: r4-r7, r9
@@ -183,10 +183,10 @@ line_clip:
 	.type line_full, %function
 
 // draw a line in a statically-sized fb; last pixel drawn
-// r0.w: x0 (r0[31:16] replicate sign)
-// r1.w: y0 (r1[31:16] replicate sign)
-// r2.w: x1 (r2[31:16] replicate sign)
-// r3.w: y1 (r3[31:16] replicate sign)
+// r0.w: x0 (bits [31:16] replicate sign)
+// r1.w: y0 (bits [31:16] replicate sign)
+// r2.w: x1 (bits [31:16] replicate sign)
+// r3.w: y1 (bits [31:16] replicate sign)
 // r8: color (splatted to pixel word)
 // r12: fb ptr
 // clobbers: r4-r7, r9

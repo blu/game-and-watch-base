@@ -76,6 +76,7 @@ line.s \
 pixmap.s \
 font.s \
 mesh.s \
+matx.s \
 trig.s \
 barycentric.s
 

@@ -701,11 +701,14 @@ int main(void)
 				"subs	r8,r8,#1\n\t"
 				"bne	1b\n\t"
 
+			/* vertex coord component, aka R */
+			".equ	R_size, 2\n\t" /* short */
+
 			/* struct R3 */
-			".equ	R3_x, 0\n\t" /* short */
-			".equ	R3_y, 2\n\t" /* short */
-			".equ	R3_z, 4\n\t" /* short */
-			".equ	R3_size, 6\n\t"
+			".equ	R3_x, R_size * 0\n\t" /* short */
+			".equ	R3_y, R_size * 1\n\t" /* short */
+			".equ	R3_z, R_size * 2\n\t" /* short */
+			".equ	R3_size, R_size * 3\n\t"
 
 			/* struct tri */
 			".equ	tri_p0, R3_size * 0\n\t" /* R3 */
@@ -715,6 +718,15 @@ int main(void)
 
 			/* plot tris */
 			/* transform obj -> scr */
+				/* preload cos(0x30) */
+				"movs	r0,#0x30\n\t"
+				"bl	cos15\n\t"
+				"movs	r8,r0\n\t"
+				/* preload sin(0x30) */
+				"movs	r0,#0x30\n\t"
+				"bl	sin15\n\t"
+				"movs	r7,r0\n\t"
+
 				/* preload cos(idx) */
 				"movs	r0,%[idx]\n\t"
 				"bl	cos15\n\t"
@@ -723,69 +735,78 @@ int main(void)
 				"movs	r0,%[idx]\n\t"
 				"bl	sin15\n\t"
 
-				"ldr	r8,=mesh_obj\n\t"
-				"ldrh	r9,[r8],#2\n\t"
-				"movs	r10,#tri_size\n\t"
-				"mul	r9,r9,r10\n\t"
-				"adds	r9,r9,r8\n\t"
-				"movs	r10,r9\n\t"
+				"ldr	r12,=mesh_obj\n\t"
+				"ldrh	r14,[r12],#2\n\t"
+				"movs	r2,#tri_size\n\t"
+				"mul	r14,r14,r2\n\t"
+				"adds	r14,r14,r12\n\t"
+				"movs	r11,r14\n\t"
 			"2:\n\t"
-				"ldrsh	r2,[r8,#R3_x]\n\t" /* v_in.x */
-				"ldrsh	r3,[r8,#R3_y]\n\t" /* v_in.y */
-				"adds	r8,r8,#R3_size\n\t"
+				"ldrsh	r2,[r12],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r12],#2\n\t" /* v_in.y */
+				"ldrsh	r4,[r12],#2\n\t" /* v_in.z */
 
 				/* transform vertex x-coord: cos * x - sin * y */
-				"mul	r4,r1,r2\n\t"
-				"mul	r6,r0,r3\n\t"
-				"subs	r4,r4,r6\n\t"
-
-				/* fx16.15 -> int16 */
-				"asrs	r4,r4,#15\n\t"
-				"adcs	r4,r4,#160\n\t"
-
-				/* transform vertex y-coord: sin * x + cos * y */
-				"mul	r5,r0,r2\n\t"
-				"mul 	r6,r1,r3\n\t"
-				"adds	r5,r5,r6\n\t"
+				"mul	r5,r1,r2\n\t"
+				"mul	r10,r0,r3\n\t"
+				"subs	r5,r5,r10\n\t"
 
 				/* fx16.15 -> int16 */
 				"asrs	r5,r5,#15\n\t"
-				"adcs	r5,r5,#120\n\t"
+				"adcs	r5,r5,#160\n\t"
 
-				"strh	r4,[r9,#R3_x]\n\t" /* v_out.x */
-				"strh	r5,[r9,#R3_y]\n\t" /* v_out.y */
-				"adds	r9,r9,#R3_size\n\t"
+				/* transform vertex y-coord: sin * x + cos * y */
+				"mul	r6,r0,r2\n\t"
+				"mul 	r10,r1,r3\n\t"
+				"adds	r6,r6,r10\n\t"
 
-				"cmp	r8,r10\n\t"
+				/* fx16.15 -> int16 */
+				"asrs	r6,r6,#15\n\t"
+				"adcs	r6,r6,#0\n\t"
+
+				/* further transform y-coord: cos * y' - sin * z */
+				"mul	r6,r8,r6\n\t"
+				"mul	r10,r7,r4\n\t"
+				"subs	r6,r6,r10\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r6,r6,#15\n\t"
+				"adcs	r6,r6,#120\n\t"
+
+				"strh	r5,[r14,#R3_x]\n\t" /* v_out.x */
+				"strh	r6,[r14,#R3_y]\n\t" /* v_out.y */
+				"adds	r14,r14,#R3_size\n\t"
+
+				"cmp	r11,r12\n\t"
 				"bne	2b\n\t"
 
 				/* scan-convert the scr-space tri edges */
-				"movs	r11,r9\n\t"
+				"movs	r10,r14\n\t"
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
 			"3:\n\t"
-				"ldrsh	r0,[r10,#tri_p0+R3_x]\n\t"
-				"ldrsh	r1,[r10,#tri_p0+R3_y]\n\t"
-				"ldrsh	r2,[r10,#tri_p1+R3_x]\n\t"
-				"ldrsh	r3,[r10,#tri_p1+R3_y]\n\t"
+				"ldrsh	r0,[r11,#tri_p0+R3_x]\n\t"
+				"ldrsh	r1,[r11,#tri_p0+R3_y]\n\t"
+				"ldrsh	r2,[r11,#tri_p1+R3_x]\n\t"
+				"ldrsh	r3,[r11,#tri_p1+R3_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line_clip\n\t"
 
-				"ldrsh	r0,[r10,#tri_p1+R3_x]\n\t"
-				"ldrsh	r1,[r10,#tri_p1+R3_y]\n\t"
-				"ldrsh	r2,[r10,#tri_p2+R3_x]\n\t"
-				"ldrsh	r3,[r10,#tri_p2+R3_y]\n\t"
+				"ldrsh	r0,[r11,#tri_p1+R3_x]\n\t"
+				"ldrsh	r1,[r11,#tri_p1+R3_y]\n\t"
+				"ldrsh	r2,[r11,#tri_p2+R3_x]\n\t"
+				"ldrsh	r3,[r11,#tri_p2+R3_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line_clip\n\t"
 
-				"ldrsh	r0,[r10,#tri_p2+R3_x]\n\t"
-				"ldrsh	r1,[r10,#tri_p2+R3_y]\n\t"
-				"ldrsh	r2,[r10,#tri_p0+R3_x]\n\t"
-				"ldrsh	r3,[r10,#tri_p0+R3_y]\n\t"
+				"ldrsh	r0,[r11,#tri_p2+R3_x]\n\t"
+				"ldrsh	r1,[r11,#tri_p2+R3_y]\n\t"
+				"ldrsh	r2,[r11,#tri_p0+R3_x]\n\t"
+				"ldrsh	r3,[r11,#tri_p0+R3_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line_clip\n\t"
 
-				"adds	r10,r10,#tri_size\n\t"
+				"adds	r11,r11,#tri_size\n\t"
 				"cmp	r10,r11\n\t"
 				"bne	3b\n\t"
 
@@ -883,7 +904,7 @@ int main(void)
 		}
 		else {
 			/* Blue turtle-shell pattern */
-#if 1
+#if 0
 			for(int y=0, row=0; y < 240; y++, row+=320) {
 					int32_t off_y = 15 * cos16((y + ii * 4) * 4);
 					__asm__ __volatile__ (
