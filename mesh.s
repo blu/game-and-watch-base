@@ -4,8 +4,7 @@
 	.section .data.mesh_obj
 	.weak mesh_obj
 	.type mesh_obj, %object
-	.balign	32
-	.space 30, 0x0
+	.balign	16
 mesh_obj:
 	.incbin "mesh/Utah_VW_Bug.bin"
 	// double the space for transformations

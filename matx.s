@@ -29,6 +29,7 @@
 // r3: rv0
 // r4: rv1
 // r5: rv2
+	.balign 32
 mul_vec3_mat:
 	muls	r3,r3,r0
 	muls	r4,r4,r0
