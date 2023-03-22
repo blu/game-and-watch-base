@@ -1,5 +1,5 @@
 /*
-   Convert an STL file to a raw binary suitable for in-place use
+   Convert an ASCII STL file to a raw binary suitable for in-place use
 
    The STL file is expected to contain a TRIANGLE LIST; the resulting
    file contains the same triangle list, with coorinates converted
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 	if (!fout) {
 		fclose(fin);
 		fprintf(stderr, "error: writing to output %s\n", fname_out);
-		return -4;
+		return -7;
 	}
 
 	int ret = 0;
@@ -123,6 +123,7 @@ int main(int argc, char **argv)
 			out.z = (int16_t) roundf(in.z * factor);
 			if (1 != fwrite(&out, sizeof(out), 1, fout)) {
 				fprintf(stderr, "error: writing to output for vertex %u\n", vcount);
+				ret = -7;
 				break;
 			}
 			vcount++;

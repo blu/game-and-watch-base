@@ -10,6 +10,8 @@
 #   2015-07-22 - first version
 # ------------------------------------------------
 
+MESH_ALT ?= 0
+
 ######################################
 # target
 ######################################
@@ -183,7 +185,7 @@ $(BUILD_DIR)/%.o: %.c Makefile | $(BUILD_DIR)
 	$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.c=.lst)) $< -o $@
 
 $(BUILD_DIR)/%.o: %.s Makefile | $(BUILD_DIR)
-	$(AS) -c $(CFLAGS) $< -o $@ -Dfb_w=320 -Dfb_h=240
+	$(AS) -c $(CFLAGS) $< -o $@ -Dfb_w=320 -Dfb_h=240 -Dmesh_alt=$(MESH_ALT)
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) Makefile
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
