@@ -138,7 +138,7 @@ int main(void)
 		if (buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && alt < 11 && i - last_press > press_lim) {
+		if (buttons & B_A && alt < 12 && i - last_press > press_lim) {
 			last_press = i;
 			alt++;
 		}
@@ -1279,7 +1279,7 @@ int main(void)
 						val_fnt_ptr + 8 * (ch & 0xff));
 				}
 		}
-		else {
+		else if (alt == 11) {
 			/* Blue turtle-shell pattern */
 #if 1
 			for(int y=0, row=0; y < 240; y++, row+=320) {
@@ -1347,6 +1347,50 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r0", "r1", "r2", "r3", "r4", "r5", "r12", "cc");
 #endif
+		}
+		else {
+			/* vsynced counter */
+			register uint16_t val_color asm ("r0") = 0;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
+
+			void *val_fnt_ptr = fnt_wang_8x16; /* reference to ensure linking */
+			__asm__ __volatile__ (
+				"ldr	%[fnt_ptr],=fnt_wang_8x16"
+			: [fnt_ptr] "=r" (val_fnt_ptr)
+			: "0" (val_fnt_ptr));
+
+			for (uint32_t di = 0, ch = ii; di < 8; di++, ch >>= 4) {
+				void * const out = framebuffer[i & 1] + 320 * (240 - 16) / 2 + (320 + 4 * 8) / 2 - 8 * di;
+				if ((ch & 0xf) > 9)
+					pixmap8x16(~color, out, val_fnt_ptr + 16 * ('A' - 10 + (ch & 0xf)));
+				else
+					pixmap8x16(~color, out, val_fnt_ptr + 16 * ('0' + (ch & 0xf)));
+			}
 		}
 
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
