@@ -23,8 +23,7 @@
 line:
 	// compute x0,y0 addr in fb
 	movs	r4,#(fb_w * 2)
-	smulbb	r4,r4,r1
-	adds	r12,r12,r4
+	mla	r12,r1,r4,r12
 	adds	r12,r12,r0,lsl #1
 
 	movs	r6,#1
@@ -105,8 +104,7 @@ line:
 line_clip:
 	// compute x0,y0 addr in fb
 	movs	r4,#(fb_w * 2)
-	smulbb	r4,r4,r1
-	adds	r12,r12,r4
+	mla	r12,r1,r4,r12
 	adds	r12,r12,r0,lsl #1
 
 	movs	r6,#1
@@ -199,8 +197,7 @@ line_clip:
 line_full:
 	// compute x0,y0 addr in fb
 	movs	r4,#(fb_w * 2)
-	smulbb	r4,r4,r1
-	adds	r12,r12,r4
+	mla	r12,r1,r4,r12
 	adds	r12,r12,r0,lsl #1
 
 	movs	r6,#1
