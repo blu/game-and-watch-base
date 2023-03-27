@@ -2,16 +2,13 @@
 	.cpu cortex-m7
 	.thumb
 
-/* struct R2 */
-.equ	R2_x, 0 /* short */
-.equ	R2_y, 2 /* short */
-.equ	R2_size, 4
+/* vertex coord component, aka R */
+.equ	R_size, 2 /* short */
 
-/* struct tri */
-.equ	tri_p0, R2_size * 0 /* R2 */
-.equ	tri_p1, R2_size * 1 /* R2 */
-.equ	tri_p2, R2_size * 2 /* R2 */
-.equ	tri_size, R2_size * 3
+/* struct R2 */
+.equ	R2_x, R_size * 0 /* short */
+.equ	R2_y, R_size * 1 /* short */
+.equ	R2_size, R_size * 2
 
 /* struct pb (parallelogram basis) */
 .equ	pb_e01,  R2_size * 0 /* R2 */

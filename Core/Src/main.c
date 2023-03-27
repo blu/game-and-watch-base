@@ -597,8 +597,9 @@ int main(void)
 				/* scan-convert the scr-space tri */
 			"3:\n\t"
 				"subs	r12,sp,#pb_size\n\t"
-				"ldrh	r0,[r10],#2\n\t"
-				"ldrh	r1,[r10],#2\n\t"
+				/* compute parallelogram basis */
+				"ldrsh	r0,[r10],#2\n\t"
+				"ldrsh	r1,[r10],#2\n\t"
 				"ldrh	r2,[r10],#2\n\t"
 				"ldrh	r3,[r10],#2\n\t"
 				"ldrh	r4,[r10],#2\n\t"
@@ -606,6 +607,69 @@ int main(void)
 				"bl	init_pb\n\t"
 				/* skip tris of negative or zero area */
 				"ble	7f\n\t"
+
+				"ldrsh	r2,[r10,#-8]\n\t"
+				"ldrsh	r3,[r10,#-6]\n\t"
+				"ldrsh	r4,[r10,#-4]\n\t"
+				"ldrsh	r5,[r10,#-2]\n\t"
+
+				/* compute tri AABB */
+				/* ascending sort in x-direction */
+				"movs	r6,r0\n\t"
+				"movs	r7,r2\n\t"
+				"movs	r8,r4\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	31f\n\t"
+
+				"movs	r6,r2\n\t"
+				"movs	r7,r0\n\t"
+			"31:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	32f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"32:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	33f\n\t"
+
+				"bfi	r7,r8,#16,#16\n\t"
+				"sxth	r8,r7\n\t"
+				"asrs	r7,r7,#16\n\t"
+			"33:\n\t"
+				/* store x_min, x_max */
+				"strd	r6,r8,[r12,#-8]\n\t"
+
+				/* ascending sort in y-direction */
+				"movs	r6,r1\n\t"
+				"movs	r7,r3\n\t"
+				"movs	r8,r5\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	34f\n\t"
+
+				"movs	r6,r3\n\t"
+				"movs	r7,r1\n\t"
+			"34:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	35f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"35:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	36f\n\t"
+
+				"bfi	r7,r8,#16,#16\n\t"
+				"sxth	r8,r7\n\t"
+				"asrs	r7,r7,#16\n\t"
+			"36:\n\t"
+				/* store y_min, y_max */
+				"strd	r6,r8,[r12,#-16]\n\t"
+				"movs	r7,r6\n\t"
 
 				/* preload p0 */
 				"movs	r2,r0\n\t"
@@ -618,13 +682,14 @@ int main(void)
 				"ldr	%[fb],[sp,#8]\n\t"
 				"mvns	r8,r8\n\t"
 
-				"stmdb	sp!,{r9-r10}\n\t"
+				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
 
 				/* iterate fb along y */
-				"movs	r7,#0\n\t"
+				"movs	r11,#640\n\t"
+				"mla	%[fb],r7,r11,%[fb]\n\t"
 			"4:\n\t"
 				/* iterate fb along x */
-				"movs	r11,#(320-240)/2\n\t"
+				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
 				"movs	r0,r11\n\t"
@@ -654,14 +719,16 @@ int main(void)
 				/* plot pixel */
 				"strh	r8,[%[fb],r11,lsl #1]\n\t"
 			"6:\n\t"
+				"ldr	r0,[sp,#-8]\n\t"
 				"adds	r11,r11,#1\n\t"
-				"cmp	r11,#320-(320-240)/2\n\t"
-				"bne	5b\n\t"
+				"cmp	r11,r0\n\t"
+				"bls	5b\n\t"
 
+				"ldr	r1,[sp,#-16]\n\t"
 				"adds	%[fb],%[fb],#640\n\t"
 				"adds	r7,r7,#1\n\t"
-				"cmp	r7,#240\n\t"
-				"bne	4b\n\t"
+				"cmp	r7,r1\n\t"
+				"bls	4b\n\t"
 			"7:\n\t"
 				"ldmia	sp!,{r9-r10}\n\t"
 				"cmp	r10,r9\n\t"
