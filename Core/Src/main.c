@@ -566,7 +566,7 @@ int main(void)
 				"ldr	r8,=tri_obj_0\n\t"
 				"adds	r9,r8,#tri_size\n\t"
 				"movs	r10,r9\n\t"
-			"2:\n\t"
+			"20:\n\t"
 				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
 				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
 
@@ -592,7 +592,81 @@ int main(void)
 				"strh	r5,[r9],#2\n\t" /* v_out.y */
 
 				"cmp	r8,r10\n\t"
-				"bne	2b\n\t"
+				"bne	20b\n\t"
+
+				/* preload cos(idx * 2) */
+				"lsls	r0,%[idx],#1\n\t"
+				"bl	cos15\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx * 2) */
+				"lsls	r0,%[idx],#1\n\t"
+				"bl	sin15\n\t"
+
+				"ldr	r8,=tri_obj_0\n\t"
+			"21:\n\t"
+				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r4,r4,#14\n\t"
+				"adcs	r4,r4,#160\n\t"
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"mul	r5,r0,r2\n\t"
+				"mul	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r5,r5,#14\n\t"
+				"adcs	r5,r5,#120\n\t"
+
+				"strh	r4,[r9],#2\n\t" /* v_out.x */
+				"strh	r5,[r9],#2\n\t" /* v_out.y */
+
+				"cmp	r8,r10\n\t"
+				"bne	21b\n\t"
+
+				/* preload cos(idx * 1) */
+				"lsls	r0,%[idx],#0\n\t"
+				"bl	cos15\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx * 1) */
+				"lsls	r0,%[idx],#0\n\t"
+				"bl	sin15\n\t"
+
+				"ldr	r8,=tri_obj_0\n\t"
+			"22:\n\t"
+				"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+				"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"mul	r4,r1,r2\n\t"
+				"mul	r6,r0,r3\n\t"
+				"subs	r4,r4,r6\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#160\n\t"
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"mul	r5,r0,r2\n\t"
+				"mul	r6,r1,r3\n\t"
+				"adds	r5,r5,r6\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#120\n\t"
+
+				"strh	r4,[r9],#2\n\t" /* v_out.x */
+				"strh	r5,[r9],#2\n\t" /* v_out.y */
+
+				"cmp	r8,r10\n\t"
+				"bne	22b\n\t"
 
 				/* scan-convert the scr-space tri */
 			"3:\n\t"
@@ -731,6 +805,9 @@ int main(void)
 				"bls	4b\n\t"
 			"7:\n\t"
 				"ldmia	sp!,{r9-r10}\n\t"
+				/* invert color */
+				"str	r8,[sp]\n\t"
+
 				"cmp	r10,r9\n\t"
 				"bne	3b\n\t"
 
