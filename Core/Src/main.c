@@ -931,6 +931,17 @@ int main(void)
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
 			"3:\n\t"
+				"subs	r12,sp,#pb_size\n\t"
+				"ldrh	r0,[r11,#tri_p0+R3_x]\n\t"
+				"ldrh	r1,[r11,#tri_p0+R3_y]\n\t"
+				"ldrh	r2,[r11,#tri_p1+R3_x]\n\t"
+				"ldrh	r3,[r11,#tri_p1+R3_y]\n\t"
+				"ldrh	r4,[r11,#tri_p2+R3_x]\n\t"
+				"ldrh	r5,[r11,#tri_p2+R3_y]\n\t"
+				"bl	init_pb\n\t"
+				/* skip tris of negative or zero area */
+				"ble	4f\n\t"
+
 				"ldrsh	r0,[r11,#tri_p0+R3_x]\n\t"
 				"ldrsh	r1,[r11,#tri_p0+R3_y]\n\t"
 				"ldrsh	r2,[r11,#tri_p1+R3_x]\n\t"
@@ -951,7 +962,7 @@ int main(void)
 				"ldrsh	r3,[r11,#tri_p0+R3_y]\n\t"
 				"ldr	%[fb],[sp,#8]\n\t"
 				"bl	line_clip\n\t"
-
+			"4:\n\t"
 				"adds	r11,r11,#tri_size\n\t"
 				"cmp	r10,r11\n\t"
 				"bne	3b\n\t"
