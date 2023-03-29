@@ -758,11 +758,11 @@ int main(void)
 
 				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
 
-				/* iterate fb along y */
+				/* iterate AABB along y */
 				"movs	r11,#640\n\t"
 				"mla	%[fb],r7,r11,%[fb]\n\t"
 			"4:\n\t"
-				/* iterate fb along x */
+				/* iterate AABB along x */
 				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
