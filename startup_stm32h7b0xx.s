@@ -32,19 +32,6 @@
 	.global  g_pfnVectors
 	.global  Default_Handler
 
-	/* start address for the initialization values of the .data section.
-	defined in linker script */
-	.word	_sidata
-	/* start address for the .data section. defined in linker script */
-	.word	_sdata
-	/* end address for the .data section. defined in linker script */
-	.word	_edata
-	/* start address for the .bss section. defined in linker script */
-	.word	_sbss
-	/* end address for the .bss section. defined in linker script */
-	.word	_ebss
-	/* stack used for SystemInit_ExtMemCtl; always internal RAM used */
-
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -63,7 +50,17 @@ Reset_Handler:
 	/* Call the clock system intitialization function.*/
 	bl	SystemInit
 
-	/* Copy the data segment initializers from flash to SRAM */
+	/* Copy the sram data segment initializers from flash to SRAM */
+	ldr	r1, =_sram_sdata
+	ldr	r2, =_sram_edata
+	ldr	r3, =_sram_sidata
+.LcopySRAMDataLoop:
+	ldr	r0, [r3], #4
+	str	r0, [r1], #4
+	cmp	r1, r2
+	bcc	.LcopySRAMDataLoop
+
+	/* Copy the dtcm data segment initializers from flash to SRAM */
 	ldr	r1, =_sdata
 	ldr	r2, =_edata
 	ldr	r3, =_sidata

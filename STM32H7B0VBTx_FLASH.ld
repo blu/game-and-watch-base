@@ -53,7 +53,7 @@
 ENTRY(Reset_Handler)
 
 /* Highest address of the user mode stack */
-_estack = 0x20020000;    /* end of RAM */
+_estack = 0x20020000;    /* end of DTCM RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
@@ -76,7 +76,7 @@ SECTIONS
     . = ALIGN(4);
     *(.lcd)
     . = ALIGN(4);
-  }  > RAM
+  } >RAM
 
   ._extflash :
   {
@@ -123,7 +123,7 @@ SECTIONS
     __exidx_end = .;
   } >FLASH
 
-  .preinit_array     :
+  .preinit_array :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
@@ -144,17 +144,28 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
 
+  /* used by the startup to initialize sram data */
+  _sram_sidata = LOADADDR(.sram_data);
+
+  .sram_data :		/* ATT: don't forget to mark inputs as allocate,write */
+  {
+    . = ALIGN(4);
+    _sram_sdata = .;	/* create a global symbol at sram data start */
+    *(.sram_data)	/* .sram_data section */
+    *(.sram_data*)	/* .sram_data* sections */
+    . = ALIGN(4);
+    _sram_edata = .;	/* define a global symbol at sram data end */
+  } >RAM AT> FLASH
+
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
-  /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
   {
     . = ALIGN(4);
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
-
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
   } >DTCMRAM AT> FLASH
@@ -170,7 +181,6 @@ SECTIONS
     *(.bss)
     *(.bss*)
     *(COMMON)
-
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
