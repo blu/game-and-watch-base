@@ -58,8 +58,28 @@ extern int32_t cos16(uint16_t ticks);
 
 extern void pixmap8x16(uint16_t color, void *out_fb, void *pixmap);
 extern void pixmap8x8(uint16_t color, void *out_fb, void *pixmap);
-extern uint8_t *fnt_wang_8x16;
-extern uint8_t *fnt_wang_8x8;
+
+/* Following are mere labels; use only by-address */
+extern uint8_t fnt_wang_8x16;
+extern uint8_t fnt_wang_8x8;
+extern uint8_t mesh_obj_0;
+extern uint8_t mesh_obj_1;
+extern uint8_t mesh_obj_2;
+extern uint8_t mesh_obj_3;
+extern uint8_t mesh_obj_4;
+extern uint8_t mesh_obj_5;
+extern uint8_t mesh_obj_6;
+
+void *mesh_obj __attribute__ ((used)) = &mesh_obj_0;
+void *mseq[] = {
+	&mesh_obj_0,
+	&mesh_obj_1,
+	&mesh_obj_2,
+	&mesh_obj_3,
+	&mesh_obj_4,
+	&mesh_obj_5,
+	&mesh_obj_6
+};
 
 short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 	  0, -29,
@@ -113,6 +133,7 @@ int main(void)
 	uint16_t color = 0;
 	uint32_t mask = 0x1f, shift = 0;
 	uint32_t i = 0, ii = 0, di = 1, last_press = 0;
+	uint32_t mi = 0;
 
 	while (1) {
 		const uint32_t buttons = buttons_get();
@@ -150,6 +171,14 @@ int main(void)
 			last_press = i;
 			di = 1 - di;
 		}
+		if (buttons & B_GAME && i - last_press > press_lim) {
+			last_press = i;
+			mi++;
+			if (mi == sizeof(mseq) / sizeof(mseq[0]))
+				mi = 0;
+			mesh_obj = mseq[mi];
+		}
+
 
 		if (alt == 0) {
 			/* Checkers of the color */
@@ -880,11 +909,12 @@ int main(void)
 				"bl	sin15\n\t"
 
 				"ldr	r12,=mesh_obj\n\t"
+				"ldr	r12,[r12]\n\t"
 				"ldrh	r14,[r12],#2\n\t"
 				"movs	r2,#tri_size\n\t"
 				"mul	r14,r14,r2\n\t"
-				"adds	r14,r14,r12\n\t"
-				"movs	r11,r14\n\t"
+				"adds	r11,r14,r12\n\t"
+				"ldr	r14,=mesh_scr\n\t"
 			"2:\n\t"
 				"ldrsh	r2,[r12],#2\n\t" /* v_in.x */
 				"ldrsh	r3,[r12],#2\n\t" /* v_in.y */
@@ -904,17 +934,6 @@ int main(void)
 				"mul 	r10,r1,r3\n\t"
 				"adds	r6,r6,r10\n\t"
 
-#if 0
-				/* fx16.15 -> int16 */
-				"asrs	r6,r6,#15\n\t"
-				"adcs	r6,r6,#0\n\t"
-
-				/* further transform y-coord: cos * y' - sin * z */
-				"mul	r6,r8,r6\n\t"
-				"mul	r10,r7,r4\n\t"
-				"subs	r6,r6,r10\n\t"
-
-#endif
 				/* fx16.15 -> int16 */
 				"asrs	r6,r6,#15\n\t"
 				"adcs	r6,r6,#120\n\t"
@@ -928,6 +947,7 @@ int main(void)
 
 				/* scan-convert the scr-space tri edges */
 				"movs	r10,r14\n\t"
+				"ldr	r11,=mesh_scr\n\t"
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
 			"3:\n\t"
@@ -1073,6 +1093,7 @@ int main(void)
 				"stmdb	sp!,{r3-r5}\n\t"
 
 				"ldr	r12,=mesh_obj\n\t"
+				"ldr	r12,[r12]\n\t"
 				"ldrh	r14,[r12],#2\n\t"
 				"movs	r0,#tri_size\n\t"
 				"mul	r14,r14,r0\n\t"
@@ -1080,6 +1101,7 @@ int main(void)
 
 				/* store mesh_obj_end */
 				"stmdb	sp!,{r14}\n\t"
+				"ldr	r14,=mesh_scr\n\t"
 			"2:\n\t"
 				"ldrsh	r0,[r12],#2\n\t" /* v_in.x */
 				"ldrsh	r1,[r12],#2\n\t" /* v_in.y */
@@ -1119,7 +1141,7 @@ int main(void)
 				"adds	sp,sp,#4 * 4\n\t"
 
 				/* scan-convert the scr-space tri edges */
-				"movs	r11,r12\n\t"
+				"ldr	r11,=mesh_scr\n\t"
 				"movs	r10,r14\n\t"
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
@@ -1255,6 +1277,7 @@ int main(void)
 				"stmdb	sp!,{r3-r5}\n\t"
 
 				"ldr	r12,=mesh_obj\n\t"
+				"ldr	r12,[r12]\n\t"
 				"ldrh	r14,[r12],#2\n\t"
 				"movs	r0,#tri_size\n\t"
 				"mul	r14,r14,r0\n\t"
@@ -1262,6 +1285,7 @@ int main(void)
 
 				/* store mesh_obj_end */
 				"stmdb	sp!,{r14}\n\t"
+				"ldr	r14,=mesh_scr\n\t"
 			"2:\n\t"
 				"ldrsh	r0,[r12],#2\n\t" /* v_in.x */
 				"ldrsh	r1,[r12],#2\n\t" /* v_in.y */
@@ -1301,7 +1325,7 @@ int main(void)
 				"adds	sp,sp,#4 * 4\n\t"
 
 				/* scan-convert the scr-space tri edges */
-				"movs	r11,r12\n\t"
+				"ldr	r11,=mesh_scr\n\t"
 				"movs	r10,r14\n\t"
 				"ldr	r8,[sp]\n\t"
 				"mvns	r8,r8\n\t"
@@ -1380,16 +1404,10 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 
-			void *val_fnt_ptr = fnt_wang_8x16; /* reference to ensure linking */
-			__asm__ __volatile__ (
-				"ldr	%[fnt_ptr],=fnt_wang_8x16"
-			: [fnt_ptr] "=r" (val_fnt_ptr)
-			: "0" (val_fnt_ptr));
-
 			for (int32_t y = 0, ch = ii; y < 240 / 16; y++)
 				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
 					pixmap8x16(~color, framebuffer[i & 1] + 320 * 16 * y + 8 * x,
-						val_fnt_ptr + 16 * (ch & 0xff));
+						&fnt_wang_8x16 + 16 * (ch & 0xff));
 				}
 		}
 		else if (alt == 10) {
@@ -1422,16 +1440,10 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 
-			void *val_fnt_ptr = fnt_wang_8x8; /* reference to ensure linking */
-			__asm__ __volatile__ (
-				"ldr	%[fnt_ptr],=fnt_wang_8x8"
-			: [fnt_ptr] "=r" (val_fnt_ptr)
-			: "0" (val_fnt_ptr));
-
 			for (int32_t y = 0, ch = ii; y < 240 / 8; y++)
 				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
 					pixmap8x8(~color, framebuffer[i & 1] + 320 * 8 * y + 8 * x,
-						val_fnt_ptr + 8 * (ch & 0xff));
+						&fnt_wang_8x8 + 8 * (ch & 0xff));
 				}
 		}
 		else if (alt == 11) {
@@ -1533,18 +1545,12 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 
-			void *val_fnt_ptr = fnt_wang_8x16; /* reference to ensure linking */
-			__asm__ __volatile__ (
-				"ldr	%[fnt_ptr],=fnt_wang_8x16"
-			: [fnt_ptr] "=r" (val_fnt_ptr)
-			: "0" (val_fnt_ptr));
-
 			for (uint32_t di = 0, ch = ii; di < 8; di++, ch >>= 4) {
 				void * const out = framebuffer[i & 1] + 320 * (240 - 16) / 2 + (320 + 4 * 8) / 2 - 8 * di;
 				if ((ch & 0xf) > 9)
-					pixmap8x16(~color, out, val_fnt_ptr + 16 * ('A' - 10 + (ch & 0xf)));
+					pixmap8x16(~color, out, &fnt_wang_8x16 + 16 * ('A' - 10 + (ch & 0xf)));
 				else
-					pixmap8x16(~color, out, val_fnt_ptr + 16 * ('0' + (ch & 0xf)));
+					pixmap8x16(~color, out, &fnt_wang_8x16 + 16 * ('0' + (ch & 0xf)));
 			}
 		}
 
