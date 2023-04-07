@@ -179,9 +179,9 @@ int main(void)
 			mesh_obj = mseq[mi];
 		}
 
-
+		/* What scene are we producing a frame from? */
 		if (alt == 0) {
-			/* Checkers of the color */
+			/* Checkers of selected color */
 			int32_t off = 64 * sin15(ii * 4);
 			__asm__ __volatile__ (
 				"asrs	%[arg],%[arg],#15\n\t"
@@ -199,7 +199,7 @@ int main(void)
 			}
 		}
 		else if (alt == 1) {
-			/* XOR pattern of the color */
+			/* XOR pattern of selected color */
 			int32_t off_x = 64 * sin15(ii * 4);
 			int32_t off_y = 128 * cos15(ii * 2);
 			__asm__ __volatile__ (
@@ -219,7 +219,7 @@ int main(void)
 			}
 		}
 		else if (alt == 2) {
-			/* Inverse dot circling CW on color bg */
+			/* Inverse dots circling CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -282,7 +282,7 @@ int main(void)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
 		}
 		else if (alt == 3) {
-			/* Inverse line rotating CW on color bg */
+			/* Inverse lines rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -350,7 +350,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 4) {
-			/* Inverse triangle rotating CW on color bg */
+			/* Inverse triangles rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -540,7 +540,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 5) {
-			/* Inverse triangle rotating CW on color bg */
+			/* Inverse solid triangles rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -1554,6 +1554,7 @@ int main(void)
 			}
 		}
 
+		/* Flip back and front framebuffers at vblank */
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
 		HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_VERTICAL_BLANKING);
 
