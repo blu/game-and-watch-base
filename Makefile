@@ -21,8 +21,6 @@ TARGET = gw_base
 ######################################
 # debug build?
 DEBUG ?= 1
-# optimization
-OPT = -Og
 
 
 #######################################
@@ -71,7 +69,7 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c
 
 # ASM sources
 ASM_SOURCES =  \
-startup_stm32h7b0xx.s \
+Core/Startup/startup_stm32h7b0xx.s \
 line.s \
 pixmap.s \
 font.s \
@@ -139,16 +137,15 @@ C_INCLUDES =  \
 
 
 # compile gcc flags
-ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
+ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) -Wall -fdata-sections -ffunction-sections
 
-CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -Wno-parentheses -fdata-sections -ffunction-sections -fomit-frame-pointer
+CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) -Wall -Wno-parentheses -fdata-sections -ffunction-sections -fomit-frame-pointer
 
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2 -O0
 else
 CFLAGS += -Ofast
 endif
-
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
@@ -160,6 +157,11 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 # link script
 LDSCRIPT = STM32H7B0VBTx_FLASH.ld
 
+ifeq ($(MAKECMDGOALS), ram)
+LDSCRIPT = STM32H7B0VBTx_RAM.ld
+CFLAGS += -DVECT_TAB_SRAM
+endif
+
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
@@ -168,6 +170,9 @@ LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BU
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
+ram: $(BUILD_DIR)/$(TARGET).elf
+
+.PHONY: ram
 
 #######################################
 # build the application

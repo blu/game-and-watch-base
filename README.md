@@ -18,6 +18,8 @@ $ git clone https://github.com/blu/game-and-watch-base.git
 $ cd game-and-watch-base
 $ ln -s $STM32CubeH7/Drivers
 $ make DEBUG=0 flash
+# or if building RAM ELF
+$ make DEBUG=0 ram
 ```
 
 # Usage
