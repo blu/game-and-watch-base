@@ -71,6 +71,7 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
+  /* Framebuffer at the start of AXI RAM */
   .lcd :
   {
     . = ALIGN(4);
@@ -84,7 +85,7 @@ SECTIONS
     _extflash = .;       /* define a global symbols to point at the external flash */
   } >EXTFLASH
 
-  /* The startup code goes straight into RAM */
+  /* The startup code goes into RAM */
   .isr_vector :
   {
     . = ALIGN(4);
@@ -123,7 +124,7 @@ SECTIONS
     __exidx_end = .;
   } >RAM
 
-  .preinit_array     :
+  .preinit_array :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
@@ -196,8 +197,6 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >DTCMRAM
-
-
 
   /* Remove information from the standard libraries */
   /DISCARD/ :

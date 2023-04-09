@@ -70,13 +70,13 @@ Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sai_ex.c
 # ASM sources
 ASM_SOURCES =  \
 Core/Startup/startup_stm32h7b0xx.s \
-line.s \
-pixmap.s \
-font.s \
-mesh.s \
-matx.s \
-trig.s \
-barycentric.s
+Uncore/line.s \
+Uncore/pixmap.s \
+Uncore/font.s \
+Uncore/mesh.s \
+Uncore/matx.s \
+Uncore/trig.s \
+Uncore/barycentric.s
 
 
 #######################################

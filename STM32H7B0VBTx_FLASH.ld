@@ -71,6 +71,7 @@ MEMORY
 /* Define output sections */
 SECTIONS
 {
+  /* Framebuffer at the start of AXI RAM */
   .lcd :
   {
     . = ALIGN(4);
@@ -84,7 +85,7 @@ SECTIONS
     _extflash = .;       /* define a global symbols to point at the external flash */
   } >EXTFLASH
 
-  /* The startup code goes first into FLASH */
+  /* The startup code goes into FLASH */
   .isr_vector :
   {
     . = ALIGN(4);
@@ -160,7 +161,7 @@ SECTIONS
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
-  .data : 
+  .data :
   {
     . = ALIGN(4);
     _sdata = .;        /* create a global symbol at data start */
@@ -196,8 +197,6 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >DTCMRAM
-
-  
 
   /* Remove information from the standard libraries */
   /DISCARD/ :
