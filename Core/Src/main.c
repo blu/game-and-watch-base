@@ -916,9 +916,9 @@ int main(void)
 				"adds	r11,r14,r12\n\t"
 				"ldr	r14,=mesh_scr\n\t"
 			"2:\n\t"
-				"ldrsh	r2,[r12],#2\n\t" /* v_in.x */
-				"ldrsh	r3,[r12],#2\n\t" /* v_in.y */
-				"ldrsh	r4,[r12],#2\n\t" /* v_in.z */
+				"ldrsh	r2,[r12,#R3_x]\n\t" /* v_in.x */
+				"ldrsh	r3,[r12,#R3_y]\n\t" /* v_in.y */
+				"adds	r12,r12,#R3_size\n\t"
 
 				/* transform vertex x-coord: cos * x - sin * y */
 				"mul	r5,r1,r2\n\t"
