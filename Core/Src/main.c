@@ -159,7 +159,7 @@ int main(void)
 		if (buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && alt < 12 && i - last_press > press_lim) {
+		if (buttons & B_A && alt < 14 && i - last_press > press_lim) {
 			last_press = i;
 			alt++;
 		}
@@ -738,10 +738,21 @@ int main(void)
 				"cmp	r7,r8\n\t"
 				"ble	33f\n\t"
 
-				"bfi	r7,r8,#16,#16\n\t"
-				"sxth	r8,r7\n\t"
-				"asrs	r7,r7,#16\n\t"
+				"movs	r8,r7\n\t"
 			"33:\n\t"
+#if 0
+				/* intersect tri x-span with fb x-span */
+				"cmp	r6,#0\n\t"
+				"bge	331f\n\t"
+				"movs	r6,#0\n\t"
+			"331:\n\t"
+				"cmp	r8,#320\n\t"
+				"blt	332f\n\t"
+				"movw	r8,#320-1\n\t"
+			"332:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+#endif
 				/* store x_min, x_max */
 				"strd	r6,r8,[r12,#-8]\n\t"
 
@@ -766,10 +777,21 @@ int main(void)
 				"cmp	r7,r8\n\t"
 				"ble	36f\n\t"
 
-				"bfi	r7,r8,#16,#16\n\t"
-				"sxth	r8,r7\n\t"
-				"asrs	r7,r7,#16\n\t"
+				"movs	r8,r7\n\t"
 			"36:\n\t"
+#if 0
+				/* intersect tri y-span with fb y-span */
+				"cmp	r6,#0\n\t"
+				"bge	361f\n\t"
+				"movs	r6,#0\n\t"
+			"361:\n\t"
+				"cmp	r8,#240\n\t"
+				"blt	362f\n\t"
+				"movs	r8,#240-1\n\t"
+			"362:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+#endif
 				/* store y_min, y_max */
 				"strd	r6,r8,[r12,#-16]\n\t"
 				"movs	r7,r6\n\t"
@@ -832,11 +854,11 @@ int main(void)
 				"adds	r7,r7,#1\n\t"
 				"cmp	r7,r1\n\t"
 				"bls	4b\n\t"
-			"7:\n\t"
+
 				"ldmia	sp!,{r9-r10}\n\t"
 				/* invert color */
 				"str	r8,[sp]\n\t"
-
+			"7:\n\t"
 				"cmp	r10,r9\n\t"
 				"bne	3b\n\t"
 
@@ -849,7 +871,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 6) {
-			/* Inverse wireframe rotating CW on color bg */
+			/* Inverse, backface-culled wireframe z-rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -891,15 +913,6 @@ int main(void)
 
 			/* plot tris */
 			/* transform obj -> scr */
-				/* preload cos(0x30) */
-				"movs	r0,#0x30\n\t"
-				"bl	cos15\n\t"
-				"movs	r8,r0\n\t"
-				/* preload sin(0x30) */
-				"movs	r0,#0x30\n\t"
-				"bl	sin15\n\t"
-				"movs	r7,r0\n\t"
-
 				/* preload cos(idx) */
 				"movs	r0,%[idx]\n\t"
 				"bl	cos15\n\t"
@@ -1514,6 +1527,583 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r0", "r1", "r2", "r3", "r4", "r5", "r12", "cc");
 #endif
+		}
+		else if (alt == 12) {
+			/* Inverse, backface-culled solid mesh z-rotating CW on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = ii;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[idx],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+
+			/* vertex coord component, aka R */
+			".equ	R_size, 2\n\t" /* short */
+
+			/* struct R3 */
+			".equ	R3_x, R_size * 0\n\t" /* short */
+			".equ	R3_y, R_size * 1\n\t" /* short */
+			".equ	R3_z, R_size * 2\n\t" /* short */
+			".equ	R3_size, R_size * 3\n\t"
+
+			/* struct tri */
+			".equ	tri_p0, R3_size * 0\n\t" /* R3 */
+			".equ	tri_p1, R3_size * 1\n\t" /* R3 */
+			".equ	tri_p2, R3_size * 2\n\t" /* R3 */
+			".equ	tri_size, R3_size * 3\n\t"
+
+			/* plot tris */
+			/* transform obj -> scr */
+				/* preload cos(idx) */
+				"movs	r0,%[idx]\n\t"
+				"bl	cos15\n\t"
+				"movs	r1,r0\n\t"
+				/* preload sin(idx) */
+				"movs	r0,%[idx]\n\t"
+				"bl	sin15\n\t"
+
+				"ldr	r12,=mesh_obj\n\t"
+				"ldr	r12,[r12]\n\t"
+				"ldrh	r14,[r12],#2\n\t"
+				"movs	r2,#tri_size\n\t"
+				"mul	r14,r14,r2\n\t"
+				"adds	r11,r14,r12\n\t"
+				"ldr	r14,=mesh_scr\n\t"
+			"2:\n\t"
+				"ldrsh	r2,[r12,#R3_x]\n\t" /* v_in.x */
+				"ldrsh	r3,[r12,#R3_y]\n\t" /* v_in.y */
+				"adds	r12,r12,#R3_size\n\t"
+
+				/* transform vertex x-coord: cos * x - sin * y */
+				"mul	r5,r1,r2\n\t"
+				"mul	r10,r0,r3\n\t"
+				"subs	r5,r5,r10\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#160\n\t"
+
+				/* transform vertex y-coord: sin * x + cos * y */
+				"mul	r6,r0,r2\n\t"
+				"mul 	r10,r1,r3\n\t"
+				"adds	r6,r6,r10\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r6,r6,#15\n\t"
+				"adcs	r6,r6,#120\n\t"
+
+				"strh	r5,[r14,#R3_x]\n\t" /* v_out.x */
+				"strh	r6,[r14,#R3_y]\n\t" /* v_out.y */
+				"adds	r14,r14,#R3_size\n\t"
+
+				"cmp	r11,r12\n\t"
+				"bne	2b\n\t"
+
+				/* scan-convert the scr-space tris */
+				"ldr	r10,=mesh_scr\n\t"
+				"movs	r9,r14\n\t"
+			"3:\n\t"
+				"subs	r12,sp,#pb_size\n\t"
+				/* compute parallelogram basis */
+				"ldrsh	r0,[r10,#tri_p0+R3_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p0+R3_y]\n\t"
+				"ldrh	r2,[r10,#tri_p1+R3_x]\n\t"
+				"ldrh	r3,[r10,#tri_p1+R3_y]\n\t"
+				"ldrh	r4,[r10,#tri_p2+R3_x]\n\t"
+				"ldrh	r5,[r10,#tri_p2+R3_y]\n\t"
+				"bl	init_pb\n\t"
+				/* skip tris of negative or zero area */
+				"ble	7f\n\t"
+
+				"ldrsh	r2,[r10,#tri_p1+R3_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p1+R3_y]\n\t"
+				"ldrsh	r4,[r10,#tri_p2+R3_x]\n\t"
+				"ldrsh	r5,[r10,#tri_p2+R3_y]\n\t"
+
+				/* compute tri AABB */
+				/* ascending sort in x-direction */
+				"movs	r6,r0\n\t"
+				"movs	r7,r2\n\t"
+				"movs	r8,r4\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	31f\n\t"
+
+				"movs	r6,r2\n\t"
+				"movs	r7,r0\n\t"
+			"31:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	32f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"32:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	33f\n\t"
+
+				"movs	r8,r7\n\t"
+			"33:\n\t"
+				/* intersect tri x-span with fb x-span */
+				"cmp	r6,#0\n\t"
+				"bge	331f\n\t"
+				"movs	r6,#0\n\t"
+			"331:\n\t"
+				"cmp	r8,#320\n\t"
+				"blt	332f\n\t"
+				"movw	r8,#320-1\n\t"
+			"332:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+
+				/* store x_min, x_max */
+				"strd	r6,r8,[r12,#-8]\n\t"
+
+				/* ascending sort in y-direction */
+				"movs	r6,r1\n\t"
+				"movs	r7,r3\n\t"
+				"movs	r8,r5\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	34f\n\t"
+
+				"movs	r6,r3\n\t"
+				"movs	r7,r1\n\t"
+			"34:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	35f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"35:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	36f\n\t"
+
+				"movs	r8,r7\n\t"
+			"36:\n\t"
+				/* intersect tri y-span with fb y-span */
+				"cmp	r6,#0\n\t"
+				"bge	361f\n\t"
+				"movs	r6,#0\n\t"
+			"361:\n\t"
+				"cmp	r8,#240\n\t"
+				"blt	362f\n\t"
+				"movs	r8,#240-1\n\t"
+			"362:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+
+				/* store y_min, y_max */
+				"strd	r6,r8,[r12,#-16]\n\t"
+				"movs	r7,r6\n\t"
+
+				/* preload p0 */
+				"movs	r2,r0\n\t"
+				"movs	r3,r1\n\t"
+				/* preload pb.e01, pb.e02, pb.area */
+				"ldm	r12,{r4-r6}\n\t"
+
+				/* preload color and fb ptr */
+				"ldr	r8,[sp]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"mvns	r8,r8\n\t"
+
+				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
+
+				/* iterate AABB along y */
+				"movs	r11,#640\n\t"
+				"mla	%[fb],r7,r11,%[fb]\n\t"
+			"4:\n\t"
+				/* iterate AABB along x */
+				"ldr	r11,[sp,#-12]\n\t"
+			"5:\n\t"
+				/* get barycentric coords for x,y */
+				"movs	r0,r11\n\t"
+				"movs	r1,r7\n\t"
+
+				/* see barycentric.s:get_coord */
+				"subs	r0,r0,r2\n\t"
+				"subs	r1,r1,r3\n\t"
+
+				"movs	r9,r0\n\t"
+				"movs	r10,r1\n\t"
+
+				"smulbt	r0,r0,r5\n\t"
+				"smulbb	r1,r1,r4\n\t"
+				"smulbt	r9,r9,r4\n\t"
+				"smulbb	r10,r10,r5\n\t"
+
+				/* if {s|t} < 0 || (s+t) > pb.area then pixel is outside */
+				"subs	r1,r1,r9\n\t"
+				"blt	6f\n\t"
+				"subs	r0,r0,r10\n\t"
+				"blt	6f\n\t"
+
+				"adds	r0,r0,r1\n\t"
+				"cmp	r0,r6\n\t"
+				"bgt	6f\n\t"
+				/* plot pixel */
+				"strh	r8,[%[fb],r11,lsl #1]\n\t"
+			"6:\n\t"
+				"ldr	r0,[sp,#-8]\n\t"
+				"adds	r11,r11,#1\n\t"
+				"cmp	r11,r0\n\t"
+				"bls	5b\n\t"
+
+				"ldr	r1,[sp,#-16]\n\t"
+				"adds	%[fb],%[fb],#640\n\t"
+				"adds	r7,r7,#1\n\t"
+				"cmp	r7,r1\n\t"
+				"bls	4b\n\t"
+
+				"ldmia	sp!,{r9-r10}\n\t"
+			"7:\n\t"
+				"adds	r10,r10,#tri_size\n\t"
+				"cmp	r10,r9\n\t"
+				"bne	3b\n\t"
+
+				"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+			  "r9", "r10", "cc");
+		}
+		else if (alt == 13) {
+			/* Inverse, backface-culled solid mesh rotating CW on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = ii;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[idx],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+
+			/* vertex coord component, aka R */
+			".equ	R_size, 2\n\t" /* short */
+
+			/* struct R3 */
+			".equ	R3_x, R_size * 0\n\t" /* short */
+			".equ	R3_y, R_size * 1\n\t" /* short */
+			".equ	R3_z, R_size * 2\n\t" /* short */
+			".equ	R3_size, R_size * 3\n\t"
+
+			/* struct tri */
+			".equ	tri_p0, R3_size * 0\n\t" /* R3 */
+			".equ	tri_p1, R3_size * 1\n\t" /* R3 */
+			".equ	tri_p2, R3_size * 2\n\t" /* R3 */
+			".equ	tri_size, R3_size * 3\n\t"
+
+			/* matrix element, aka E */
+			".equ	E_size, 4\n\t" /* word */
+
+			/* struct row */
+			".equ	row_x, E_size * 0\n\t" /* word */
+			".equ	row_y, E_size * 1\n\t" /* word */
+			".equ	row_z, E_size * 2\n\t" /* word */
+			".equ	row_size, E_size * 3\n\t"
+
+			/* struct mat */
+			".equ	mat_0, row_size * 0\n\t" /* row */
+			".equ	mat_1, row_size * 1\n\t" /* row */
+			".equ	mat_2, row_size * 2\n\t" /* row */
+			".equ	mat_size, row_size * 3\n\t"
+
+			/* plot tris */
+			/* transform obj -> scr */
+				"movs	r0,#0x30\n\t" /* r10: cosB */
+				"bl	cos15\n\t"
+				"movs	r10,r0\n\t"
+				"movs	r0,#0x30\n\t" /* r9: sinB */
+				"bl	sin15\n\t"
+				"movs	r9,r0\n\t"
+
+				"movs	r0,%[idx]\n\t" /* r1: cosA */
+				"bl	cos15\n\t"
+				"movs	r1,r0\n\t"
+				"movs	r0,%[idx]\n\t" /* r0: sinA */
+				"bl	sin15\n\t"
+
+				/* preload mat_{0,1,2} */
+				"movs	r3,r1\n\t"	/* m00: cosA */
+				"mul	r4,r0,r10\n\t"	/* m01: sinA cosB */
+				"mul	r5,r0,r9\n\t"	/* m02: sinA sinB */
+
+				"negs	r6,r0\n\t"	/* m10: -sinA */
+				"mul	r7,r1,r10\n\t"	/* m11: cosA cosB */
+				"mul	r8,r1,r9\n\t"	/* m12: cosA sinB */
+
+				"movs	r11,r10\n\t"	/* m22: cosB */
+				"negs	r10,r9\n\t"	/* m21: -sinB */
+				"movs	r9,#0\n\t"	/* m20: 0 */
+
+				/* fx2.30 -> fx17.15 */
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#0\n\t"
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#0\n\t"
+				"asrs	r7,r7,#15\n\t"
+				"adcs	r7,r7,#0\n\t"
+				"asrs	r8,r8,#15\n\t"
+				"adcs	r8,r8,#0\n\t"
+
+				/* store mat_0 */
+				"stmdb	sp!,{r3-r5}\n\t"
+
+				"ldr	r12,=mesh_obj\n\t"
+				"ldr	r12,[r12]\n\t"
+				"ldrh	r14,[r12],#2\n\t"
+				"movs	r0,#tri_size\n\t"
+				"mul	r14,r14,r0\n\t"
+				"adds	r14,r14,r12\n\t"
+
+				/* store mesh_obj_end */
+				"stmdb	sp!,{r14}\n\t"
+				"ldr	r14,=mesh_scr\n\t"
+			"2:\n\t"
+				"ldrsh	r0,[r12],#2\n\t" /* v_in.x */
+				"ldrsh	r1,[r12],#2\n\t" /* v_in.y */
+				"ldrsh	r2,[r12],#2\n\t" /* v_in.z */
+
+				/* inline mul_vec3_mat to reduce reg pressure */
+				"muls	r3,r3,r0\n\t"
+				"muls	r4,r4,r0\n\t"
+				"muls	r5,r5,r0\n\t"
+
+				"mla	r3,r6,r1,r3\n\t"
+				"mla	r4,r7,r1,r4\n\t"
+				"mla	r5,r8,r1,r5\n\t"
+
+				"mla	r3,r9, r2,r3\n\t"
+				"mla	r4,r10,r2,r4\n\t"
+				"mla	r5,r11,r2,r5\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r3,r3,#15\n\t"
+				"adcs	r3,r3,#160\n\t"
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#120\n\t"
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#0\n\t"
+
+				"strh	r3,[r14],#2\n\t" /* v_out.x */
+				"strh	r4,[r14],#2\n\t" /* v_out.y */
+				"strh	r5,[r14],#2\n\t" /* v_out.z */
+
+				/* restore mesh_obj_end and mat_0 */
+				"ldm	sp,{r0,r3-r5}\n\t"
+
+				"cmp	r0,r12\n\t"
+				"bne	2b\n\t"
+
+				"adds	sp,sp,#4 * 4\n\t"
+
+				/* scan-convert the scr-space tris */
+				"ldr	r10,=mesh_scr\n\t"
+				"movs	r9,r14\n\t"
+			"3:\n\t"
+				"subs	r12,sp,#pb_size\n\t"
+				/* compute parallelogram basis */
+				"ldrsh	r0,[r10,#tri_p0+R3_x]\n\t"
+				"ldrsh	r1,[r10,#tri_p0+R3_y]\n\t"
+				"ldrh	r2,[r10,#tri_p1+R3_x]\n\t"
+				"ldrh	r3,[r10,#tri_p1+R3_y]\n\t"
+				"ldrh	r4,[r10,#tri_p2+R3_x]\n\t"
+				"ldrh	r5,[r10,#tri_p2+R3_y]\n\t"
+				"bl	init_pb\n\t"
+				/* skip tris of negative or zero area */
+				"ble	7f\n\t"
+
+				"ldrsh	r2,[r10,#tri_p1+R3_x]\n\t"
+				"ldrsh	r3,[r10,#tri_p1+R3_y]\n\t"
+				"ldrsh	r4,[r10,#tri_p2+R3_x]\n\t"
+				"ldrsh	r5,[r10,#tri_p2+R3_y]\n\t"
+
+				/* compute tri AABB */
+				/* ascending sort in x-direction */
+				"movs	r6,r0\n\t"
+				"movs	r7,r2\n\t"
+				"movs	r8,r4\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	31f\n\t"
+
+				"movs	r6,r2\n\t"
+				"movs	r7,r0\n\t"
+			"31:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	32f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"32:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	33f\n\t"
+
+				"movs	r8,r7\n\t"
+			"33:\n\t"
+				/* intersect tri x-span with fb x-span */
+				"cmp	r6,#0\n\t"
+				"bge	331f\n\t"
+				"movs	r6,#0\n\t"
+			"331:\n\t"
+				"cmp	r8,#320\n\t"
+				"blt	332f\n\t"
+				"movw	r8,#320-1\n\t"
+			"332:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+
+				/* store x_min, x_max */
+				"strd	r6,r8,[r12,#-8]\n\t"
+
+				/* ascending sort in y-direction */
+				"movs	r6,r1\n\t"
+				"movs	r7,r3\n\t"
+				"movs	r8,r5\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	34f\n\t"
+
+				"movs	r6,r3\n\t"
+				"movs	r7,r1\n\t"
+			"34:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	35f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"35:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	36f\n\t"
+
+				"movs	r8,r7\n\t"
+			"36:\n\t"
+				/* intersect tri y-span with fb y-span */
+				"cmp	r6,#0\n\t"
+				"bge	361f\n\t"
+				"movs	r6,#0\n\t"
+			"361:\n\t"
+				"cmp	r8,#240\n\t"
+				"blt	362f\n\t"
+				"movs	r8,#240-1\n\t"
+			"362:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+
+				/* store y_min, y_max */
+				"strd	r6,r8,[r12,#-16]\n\t"
+				"movs	r7,r6\n\t"
+
+				/* preload p0 */
+				"movs	r2,r0\n\t"
+				"movs	r3,r1\n\t"
+				/* preload pb.e01, pb.e02, pb.area */
+				"ldm	r12,{r4-r6}\n\t"
+
+				/* preload color and fb ptr */
+				"ldr	r8,[sp]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"mvns	r8,r8\n\t"
+
+				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
+
+				/* iterate AABB along y */
+				"movs	r11,#640\n\t"
+				"mla	%[fb],r7,r11,%[fb]\n\t"
+			"4:\n\t"
+				/* iterate AABB along x */
+				"ldr	r11,[sp,#-12]\n\t"
+			"5:\n\t"
+				/* get barycentric coords for x,y */
+				"movs	r0,r11\n\t"
+				"movs	r1,r7\n\t"
+
+				/* see barycentric.s:get_coord */
+				"subs	r0,r0,r2\n\t"
+				"subs	r1,r1,r3\n\t"
+
+				"movs	r9,r0\n\t"
+				"movs	r10,r1\n\t"
+
+				"smulbt	r0,r0,r5\n\t"
+				"smulbb	r1,r1,r4\n\t"
+				"smulbt	r9,r9,r4\n\t"
+				"smulbb	r10,r10,r5\n\t"
+
+				/* if {s|t} < 0 || (s+t) > pb.area then pixel is outside */
+				"subs	r1,r1,r9\n\t"
+				"blt	6f\n\t"
+				"subs	r0,r0,r10\n\t"
+				"blt	6f\n\t"
+
+				"adds	r0,r0,r1\n\t"
+				"cmp	r0,r6\n\t"
+				"bgt	6f\n\t"
+				/* plot pixel */
+				"strh	r8,[%[fb],r11,lsl #1]\n\t"
+			"6:\n\t"
+				"ldr	r0,[sp,#-8]\n\t"
+				"adds	r11,r11,#1\n\t"
+				"cmp	r11,r0\n\t"
+				"bls	5b\n\t"
+
+				"ldr	r1,[sp,#-16]\n\t"
+				"adds	%[fb],%[fb],#640\n\t"
+				"adds	r7,r7,#1\n\t"
+				"cmp	r7,r1\n\t"
+				"bls	4b\n\t"
+
+				"ldmia	sp!,{r9-r10}\n\t"
+			"7:\n\t"
+				"adds	r10,r10,#tri_size\n\t"
+				"cmp	r10,r9\n\t"
+				"bne	3b\n\t"
+
+				"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+			  "r9", "r10", "cc");
 		}
 		else {
 			/* vsynced counter */
