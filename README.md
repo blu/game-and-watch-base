@@ -1,6 +1,6 @@
 # Game-and-Watch Screen Tests
 
-A set of performance tests for the LCD screens of the 2020-and-later Game & Watch [mario](https://en.wikipedia.org/wiki/Game_%26_Watch%3A_Super_Mario_Bros.) and [zelda](https://en.wikipedia.org/wiki/The_Legend_of_Zelda_LCD_games#Game_&_Watch:_The_Legend_of_Zelda) handhelds. Goal is to have a tool for evaluating the pixel-switching latencies among primary colors. When high, such latencies usually produce characteristic ghosting effects during quick animation sequences. A phenomenon users of the 1st-gen PSP are too familiar with. All tests but 'Blue-Turtle-shell' pattern are running at fixed 60fps; the turtle one is 30fps.
+A set of performance tests for the LCD screens of the 2020-and-later Game & Watch [mario](https://en.wikipedia.org/wiki/Game_%26_Watch%3A_Super_Mario_Bros.) and [zelda](https://en.wikipedia.org/wiki/The_Legend_of_Zelda_LCD_games#Game_&_Watch:_The_Legend_of_Zelda) handhelds. Goal is to have a tool for evaluating the pixel-switching latencies among primary colors. When high, such latencies usually produce characteristic ghosting effects during quick animation sequences. A phenomenon users of the 1st-gen PSP are too familiar with. All tests up to 'Blue-Turtle-shell' scrolling pattern are running at fixed 60fps; the turtle one is 30fps; subsequent tests are experiments at unstable fps.
 
 # What Does It Look Like?
 
@@ -28,4 +28,5 @@ $ make DEBUG=0 ram
 	`A` -- next test
 	`B` -- prev test
 	`PAUSE` -- pause/unpause animation
-	`GAME` -- select next model in the wireframe tests
+	`TIME` -- select animation speed 1x/2x/4x
+	`GAME` -- select next model in the mesh tests

@@ -132,7 +132,7 @@ int main(void)
 	uint8_t alt = 0;
 	uint16_t color = 0;
 	uint32_t mask = 0x1f, shift = 0;
-	uint32_t i = 0, ii = 0, di = 1, last_press = 0;
+	uint32_t i = 0, ii = 0, di = 1, si = 1, last_press = 0;
 	uint32_t mi = 0;
 
 	while (1) {
@@ -169,7 +169,15 @@ int main(void)
 		}
 		if (buttons & B_PAUSE && i - last_press > press_lim) {
 			last_press = i;
-			di = 1 - di;
+			di = di ? 0 : si;
+		}
+		if (buttons & B_TIME && i - last_press > press_lim) {
+			last_press = i;
+			si <<= 1;
+			if (si == 8)
+				si = 1;
+			if (di)
+				di = si;
 		}
 		if (buttons & B_GAME && i - last_press > press_lim) {
 			last_press = i;
