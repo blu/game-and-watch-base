@@ -118,6 +118,14 @@ int main(void)
 	MX_NVIC_Init();
 	/* USER CODE BEGIN 2 */
 
+	/* Enable caching */
+	SCB_EnableICache();
+#if 0
+	/* att: Don't enable d-caches; framebuffer is not excluded from caching
+	   resulting in artifacts, and we don't do many non-local reads */
+	SCB_EnableDCache();
+
+#endif
 	lcd_init(&hspi2);
 	memset(framebuffer, 0, sizeof(framebuffer));
 
@@ -1404,147 +1412,6 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 9) {
-			/* Color font 8x16 on black bg */
-			register uint16_t val_color asm ("r0") = 0;
-			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
-
-			__asm__ __volatile__ (
-			/* clear fb to solid color */
-				"bfi	%[color],%[color],#16,#16\n\t"
-				"stmdb	sp!,{%[color],%[fb]}\n\t"
-				"movs	r1,%[color]\n\t"
-				"movs	r2,%[color]\n\t"
-				"movs	r3,%[color]\n\t"
-				"movs	r4,%[color]\n\t"
-				"movs	r5,%[color]\n\t"
-				"movs	r6,%[color]\n\t"
-				"movs	r7,%[color]\n\t"
-				"movs	r8,#(320*240*2/(8*4*4))\n\t"
-			"1:\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"subs	r8,r8,#1\n\t"
-				"bne	1b\n\t"
-				"ldmia	sp!,{%[color],%[fb]}\n\t"
-			: /* none */
-			: [color] "r" (val_color),
-			  [fb] "r" (ptr_fb)
-			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
-
-			for (int32_t y = 0, ch = ii; y < 240 / 16; y++)
-				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
-					pixmap8x16(~color, framebuffer[i & 1] + 320 * 16 * y + 8 * x,
-						&fnt_wang_8x16 + 16 * (ch & 0xff));
-				}
-		}
-		else if (alt == 10) {
-			/* Color font 8x8 on black bg */
-			register uint16_t val_color asm ("r0") = 0;
-			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
-
-			__asm__ __volatile__ (
-			/* clear fb to solid color */
-				"bfi	%[color],%[color],#16,#16\n\t"
-				"stmdb	sp!,{%[color],%[fb]}\n\t"
-				"movs	r1,%[color]\n\t"
-				"movs	r2,%[color]\n\t"
-				"movs	r3,%[color]\n\t"
-				"movs	r4,%[color]\n\t"
-				"movs	r5,%[color]\n\t"
-				"movs	r6,%[color]\n\t"
-				"movs	r7,%[color]\n\t"
-				"movs	r8,#(320*240*2/(8*4*4))\n\t"
-			"1:\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"stm	%[fb]!,{r0-r7}\n\t"
-				"subs	r8,r8,#1\n\t"
-				"bne	1b\n\t"
-				"ldmia	sp!,{%[color],%[fb]}\n\t"
-			: /* none */
-			: [color] "r" (val_color),
-			  [fb] "r" (ptr_fb)
-			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
-
-			for (int32_t y = 0, ch = ii; y < 240 / 8; y++)
-				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
-					pixmap8x8(~color, framebuffer[i & 1] + 320 * 8 * y + 8 * x,
-						&fnt_wang_8x8 + 8 * (ch & 0xff));
-				}
-		}
-		else if (alt == 11) {
-			/* Blue turtle-shell pattern */
-#if 1
-			for(int y=0, row=0; y < 240; y++, row+=320) {
-					int32_t off_y = 15 * cos16((y + ii * 4) * 4);
-					__asm__ __volatile__ (
-						"asrs	%[arg_y],%[arg_y],#16\n\t"
-						"adcs	%[arg_y],%[arg_y],#16\n\t"
-					: [arg_y] "=r" (off_y)
-					: "0" (off_y)
-					: "cc");
-
-				for(int x=0; x < 320; x++) {
-					int32_t off_x = 15 * sin16((x + ii * 4) * 4);
-					__asm__ __volatile__ (
-						"asrs	%[arg_x],%[arg_x],#16\n\t"
-						"adcs	%[arg_x],%[arg_x],#16\n\t"
-					: [arg_x] "=r" (off_x)
-					: "0" (off_x)
-					: "cc");
-
-					framebuffer[i & 1][row+x] = off_x + off_y;
-				}
-			}
-#else
-			/* gcc 12.2 codegen emits a few excessive moves from the above */
-			register uint32_t val_i_x16 asm ("r9") = ii * 4 * 4;
-			register uint32_t val_y_lim asm ("r10") = (240 + ii * 4) * 4;
-			register void *ptr_fb asm ("r11") = framebuffer + (i & 1);
-			__asm__ __volatile__ (
-				"stmdb	sp!,{%[fb]}\n\t"
-				"ldr	r12,=cosLUT15_128 - 2\n\t"
-				"movs	r4,%[i_x16]\n\t"
-			"1:\n\t"
-				"movs	r0,r4\n\t"
-				"bl	cos\n\t"
-				"rsbs	r1,r0,r0,lsl #4\n\t"
-
-				"asrs	r1,r1,#15\n\t"
-				"adcs	r1,r1,#16\n\t"
-
-				"movs	r5,%[i_x16]\n\t"
-				"adds	r3,%[i_x16],#320 * 4\n\t"
-				".balign 32\n\t"
-			"2:\n\t"
-				"movs	r0,r5\n\t"
-				"bl	sin\n\t"
-				"rsbs	r2,r0,r0,lsl #4\n\t"
-
-				"asrs	r2,r2,#15\n\t"
-				"adcs	r2,r2,#16\n\t"
-
-				"adds	r2,r2,r1\n\t"
-				"adds	r5,r5,#4\n\t"
-				"strh	r2,[%[fb]],#2\n\t"
-				"cmp	r3,r5\n\t"
-				"bne	2b\n\t"
-
-				"adds	r4,r4,#4\n\t"
-				"cmp	r4,%[y_lim]\n\t"
-				"bne	1b\n\t"
-				"ldmia	sp!,{%[fb]}"
-			: /* none */
-			: [i_x16] "r" (val_i_x16),
-			  [y_lim] "r" (val_y_lim),
-			  [fb] "r" (ptr_fb)
-			: "r0", "r1", "r2", "r3", "r4", "r5", "r12", "cc");
-#endif
-		}
-		else if (alt == 12) {
 			/* Inverse, backface-culled solid mesh z-rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
@@ -1804,7 +1671,7 @@ int main(void)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
 			  "r9", "r10", "cc");
 		}
-		else if (alt == 13) {
+		else if (alt == 10) {
 			/* Inverse, backface-culled solid mesh rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
@@ -2120,6 +1987,147 @@ int main(void)
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
 			  "r9", "r10", "cc");
+		}
+		else if (alt == 11) {
+			/* Color font 8x16 on black bg */
+			register uint16_t val_color asm ("r0") = 0;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
+
+			for (int32_t y = 0, ch = ii; y < 240 / 16; y++)
+				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
+					pixmap8x16(~color, framebuffer[i & 1] + 320 * 16 * y + 8 * x,
+						&fnt_wang_8x16 + 16 * (ch & 0xff));
+				}
+		}
+		else if (alt == 12) {
+			/* Color font 8x8 on black bg */
+			register uint16_t val_color asm ("r0") = 0;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[color],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "cc");
+
+			for (int32_t y = 0, ch = ii; y < 240 / 8; y++)
+				for (int32_t x = 0; x < 320 / 8; x++, ch++) {
+					pixmap8x8(~color, framebuffer[i & 1] + 320 * 8 * y + 8 * x,
+						&fnt_wang_8x8 + 8 * (ch & 0xff));
+				}
+		}
+		else if (alt == 13) {
+			/* Blue turtle-shell pattern */
+#if 1
+			for(int y=0, row=0; y < 240; y++, row+=320) {
+					int32_t off_y = 15 * cos16((y + ii * 4) * 4);
+					__asm__ __volatile__ (
+						"asrs	%[arg_y],%[arg_y],#16\n\t"
+						"adcs	%[arg_y],%[arg_y],#16\n\t"
+					: [arg_y] "=r" (off_y)
+					: "0" (off_y)
+					: "cc");
+
+				for(int x=0; x < 320; x++) {
+					int32_t off_x = 15 * sin16((x + ii * 4) * 4);
+					__asm__ __volatile__ (
+						"asrs	%[arg_x],%[arg_x],#16\n\t"
+						"adcs	%[arg_x],%[arg_x],#16\n\t"
+					: [arg_x] "=r" (off_x)
+					: "0" (off_x)
+					: "cc");
+
+					framebuffer[i & 1][row+x] = off_x + off_y;
+				}
+			}
+#else
+			/* gcc 12.2 codegen emits a few excessive moves from the above */
+			register uint32_t val_i_x16 asm ("r9") = ii * 4 * 4;
+			register uint32_t val_y_lim asm ("r10") = (240 + ii * 4) * 4;
+			register void *ptr_fb asm ("r11") = framebuffer + (i & 1);
+			__asm__ __volatile__ (
+				"stmdb	sp!,{%[fb]}\n\t"
+				"ldr	r12,=cosLUT15_128 - 2\n\t"
+				"movs	r4,%[i_x16]\n\t"
+			"1:\n\t"
+				"movs	r0,r4\n\t"
+				"bl	cos\n\t"
+				"rsbs	r1,r0,r0,lsl #4\n\t"
+
+				"asrs	r1,r1,#15\n\t"
+				"adcs	r1,r1,#16\n\t"
+
+				"movs	r5,%[i_x16]\n\t"
+				"adds	r3,%[i_x16],#320 * 4\n\t"
+				".balign 32\n\t"
+			"2:\n\t"
+				"movs	r0,r5\n\t"
+				"bl	sin\n\t"
+				"rsbs	r2,r0,r0,lsl #4\n\t"
+
+				"asrs	r2,r2,#15\n\t"
+				"adcs	r2,r2,#16\n\t"
+
+				"adds	r2,r2,r1\n\t"
+				"adds	r5,r5,#4\n\t"
+				"strh	r2,[%[fb]],#2\n\t"
+				"cmp	r3,r5\n\t"
+				"bne	2b\n\t"
+
+				"adds	r4,r4,#4\n\t"
+				"cmp	r4,%[y_lim]\n\t"
+				"bne	1b\n\t"
+				"ldmia	sp!,{%[fb]}"
+			: /* none */
+			: [i_x16] "r" (val_i_x16),
+			  [y_lim] "r" (val_y_lim),
+			  [fb] "r" (ptr_fb)
+			: "r0", "r1", "r2", "r3", "r4", "r5", "r12", "cc");
+#endif
 		}
 		else {
 			/* vsynced counter */
