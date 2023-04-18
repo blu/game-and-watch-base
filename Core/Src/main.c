@@ -87,6 +87,8 @@ short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 	-25,  14,
 };
 
+static void deepsleep() __attribute__ ((noinline));
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -97,6 +99,9 @@ int main(void)
 
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
+
+	/* Disable wakeup source PIN1 */
+	HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1_LOW);
 
 	/* Configure the system clock */
 	SystemClock_Config();
@@ -138,6 +143,9 @@ int main(void)
 	while (1) {
 		const uint32_t buttons = buttons_get();
 		const uint32_t press_lim = 8;
+		if (buttons & B_POWER) {
+			deepsleep();
+		}
 		if (buttons & B_Left) {
 			/* red */
 			mask = 0x1f;
@@ -2163,6 +2171,20 @@ int main(void)
 	}
 }
 
+static void deepsleep()
+{
+#ifndef VECT_TAB_SRAM
+	/* Enable wakup by PIN1, the power button */
+	HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1_LOW);
+
+	lcd_backlight_off();
+
+	HAL_PWR_EnterSTANDBYMode();
+
+#endif
+	HAL_NVIC_SystemReset();
+}
+
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -2521,6 +2543,12 @@ static void MX_GPIO_Init(void)
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIO_Speaker_enable_GPIO_Port, &GPIO_InitStruct);
+
+	/*Configure GPIO pin : BTN_PWR_Pin */
+	GPIO_InitStruct.Pin = BTN_POWER_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(BTN_POWER_GPIO_Port, &GPIO_InitStruct);
 
 	/*Configure GPIO pins : BTN_PAUSE_Pin BTN_GAME_Pin BTN_TIME_Pin */
 	GPIO_InitStruct.Pin = BTN_PAUSE_Pin|BTN_GAME_Pin|BTN_TIME_Pin;
