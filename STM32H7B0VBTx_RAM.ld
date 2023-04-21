@@ -85,28 +85,42 @@ SECTIONS
     _extflash = .;       /* define a global symbols to point at the external flash */
   } >EXTFLASH
 
-  /* The startup code goes into RAM */
+  /* The interrupt vector table goes into RAM */
   .isr_vector :
   {
     . = ALIGN(4);
-    KEEP(*(.isr_vector)) /* Startup code */
+    KEEP(*(.isr_vector))
     . = ALIGN(4);
   } >RAM
 
-  /* The program code and other data goes into RAM */
+  /* The startup code goes into RAM */
+  .sysinit_text :
+  {
+    . = ALIGN(4);
+    *startup_stm32h7b0xx.o(.text)
+    *startup_stm32h7b0xx.o(.text*)
+    *system_stm32h7xx.o(.text)
+    *system_stm32h7xx.o(.text*)
+    . = ALIGN(4);
+  } >RAM
+
+  /* used by the startup to initialize code */
+  _sitext = LOADADDR(.text);
+
+  /* The program code and literal pools go into ITCMRAM */
   .text :
   {
     . = ALIGN(4);
+    _stext = .;        /* create a global symbol at start of code */
+    EXCLUDE_FILE (*startup_stm32h7b0xx.o *system_stm32h7xx.o)
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.eh_frame)
-
     KEEP (*(.init))
     KEEP (*(.fini))
-
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >RAM
+  } >ITCMRAM AT> RAM
 
   /* Constant data goes into RAM */
   .rodata :

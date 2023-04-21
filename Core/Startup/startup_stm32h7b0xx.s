@@ -50,7 +50,17 @@ Reset_Handler:
 	/* Call the clock system intitialization function.*/
 	bl	SystemInit
 
-	/* Copy the sram data segment initializers from flash to SRAM */
+	/* Copy the itcm text segment initializers from flash */
+	ldr	r1, =_stext
+	ldr	r2, =_etext
+	ldr	r3, =_sitext
+.LcopyTextLoop:
+	ldr	r0, [r3], #4
+	str	r0, [r1], #4
+	cmp	r1, r2
+	bcc	.LcopyTextLoop
+
+	/* Copy the sram data segment initializers from flash */
 	ldr	r1, =_sram_sdata
 	ldr	r2, =_sram_edata
 	ldr	r3, =_sram_sidata
@@ -60,7 +70,7 @@ Reset_Handler:
 	cmp	r1, r2
 	bcc	.LcopySRAMDataLoop
 
-	/* Copy the dtcm data segment initializers from flash to SRAM */
+	/* Copy the dtcm data segment initializers from flash */
 	ldr	r1, =_sdata
 	ldr	r2, =_edata
 	ldr	r3, =_sidata

@@ -118,9 +118,9 @@ int main(void)
 	MX_NVIC_Init();
 	/* USER CODE BEGIN 2 */
 
+#if 0
 	/* Enable caching */
 	SCB_EnableICache();
-#if 0
 	/* att: Don't enable d-caches; framebuffer is not excluded from caching
 	   resulting in artifacts, and we don't do many non-local reads */
 	SCB_EnableDCache();
