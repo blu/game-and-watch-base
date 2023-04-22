@@ -88,11 +88,10 @@ short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 	-25,  14,
 };
 
-uint32_t sys_cmsis[2];
-uint32_t sys_cache[4];
-
 static void deepsleep() __attribute__ ((noinline));
 static void print_x32(uint16_t color, void *out_fb, uint32_t val) __attribute__ ((noinline));
+
+uint32_t cycle[15];
 
 /**
   * @brief  The application entry point.
@@ -131,14 +130,6 @@ int main(void)
 	SCB_EnableDCache();
 
 #endif
-	/* Collect some system regs of interest */
-	sys_cmsis[0] = __get_CONTROL();
-	sys_cmsis[1] = __get_BASEPRI();
-	sys_cache[0] = SCB->CLIDR;                  /*!< Offset: 0x078 (R/ )  Cache Level ID register */
-	sys_cache[1] = SCB->CTR;                    /*!< Offset: 0x07C (R/ )  Cache Type register */
-	sys_cache[2] = SCB->CCSIDR;                 /*!< Offset: 0x080 (R/ )  Cache Size ID Register */
-	sys_cache[3] = SCB->CSSELR;                 /*!< Offset: 0x084 (R/W)  Cache Size Selection Register */
-
 	lcd_init(&hspi2);
 	memset(framebuffer, 0, sizeof(framebuffer));
 
@@ -148,12 +139,18 @@ int main(void)
 
 	flash_memory_map(&hospi1);
 
-	// Sanity check, sometimes this is triggered
+	/* Sanity check, sometimes this is triggered */
 	uint32_t add = 0x90000000;
 	uint32_t* ptr = (uint32_t*)add;
 	if(*ptr == 0x88888888) {
 		Error_Handler();
 	}
+
+	/* Enable DWT cycle counter */
+	CoreDebug->DEMCR = CoreDebug->DEMCR | 0x01000000; /* enable trace */
+	DWT->LAR = 0xC5ACCE55;		/* unlock access to DWT registers */
+	DWT->CYCCNT = 0;		/* clear DWT cycle counter */
+	DWT->CTRL = DWT->CTRL | 1;	/* enable DWT cycle counter */
 
 	uint8_t alt = 0;
 	uint16_t color = 0;
@@ -215,6 +212,8 @@ int main(void)
 				mi = 0;
 			mesh_obj = mseq[mi];
 		}
+
+		const uint32_t st = DWT->CYCCNT;
 
 		/* What scene are we producing a frame from? */
 		if (alt == 0) {
@@ -2175,15 +2174,27 @@ int main(void)
 			void * const out = framebuffer[i & 1] + 320 * (240 - 16) / 2 + (320 - 8 * 8) / 2;
 			print_x32(~color, out, ii);
 
-			/* Print current privilege and cache caps */
-			print_x32(~color, framebuffer[i & 1] + 320 *  0, sys_cmsis[0]);
-			print_x32(~color, framebuffer[i & 1] + 320 * 16, sys_cmsis[1]);
-
-			print_x32(~color, framebuffer[i & 1] + 320 * 32, sys_cache[0]);
-			print_x32(~color, framebuffer[i & 1] + 320 * 48, sys_cache[1]);
-			print_x32(~color, framebuffer[i & 1] + 320 * 64, sys_cache[2]);
-			print_x32(~color, framebuffer[i & 1] + 320 * 80, sys_cache[3]);
+			/* Print cycle counters */
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  0, cycle[0]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  1, cycle[1]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  2, cycle[2]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  3, cycle[3]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  4, cycle[4]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  5, cycle[5]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  6, cycle[6]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  7, cycle[7]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  8, cycle[8]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 *  9, cycle[9]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 10, cycle[10]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 11, cycle[11]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 12, cycle[12]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 13, cycle[13]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 14, cycle[14]);
 		}
+
+		const uint32_t dt = DWT->CYCCNT - st;
+		const uint32_t old_cycle = cycle[alt];
+		cycle[alt] = old_cycle ? (old_cycle + dt) / 2 : dt;
 
 		/* Flip back and front framebuffers at vblank */
 		HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t) &framebuffer[i & 1], LTDC_LAYER_1);
