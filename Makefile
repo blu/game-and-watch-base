@@ -144,7 +144,7 @@ CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) -Wall -Wno-parentheses -fdata-sections -
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2 -O0
 else
-CFLAGS += -Ofast
+CFLAGS += -Ofast -DNDEBUG
 endif
 
 # Generate dependency information

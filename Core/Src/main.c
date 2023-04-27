@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
+#include <assert.h>
 #include "main.h"
 #include <core_cm7.h>
 
@@ -71,7 +72,7 @@ extern uint8_t mesh_obj_4;
 extern uint8_t mesh_obj_5;
 extern uint8_t mesh_obj_6;
 
-void *mesh_obj __attribute__ ((used)) = &mesh_obj_0;
+void *mesh_obj = &mesh_obj_0;
 void *mseq[] = {
 	&mesh_obj_0,
 	&mesh_obj_1,
@@ -91,7 +92,169 @@ short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 static void deepsleep() __attribute__ ((noinline));
 static void print_x32(uint16_t color, void *out_fb, uint32_t val) __attribute__ ((noinline));
 
-uint32_t cycle[15];
+#define ALT_NUM	16
+
+uint32_t cycle[ALT_NUM];
+
+typedef struct {
+	int16_t pos[3];
+} Vertex;
+
+typedef uint16_t Index;
+
+typedef struct {
+	uint16_t count;
+	Vertex arr[1];
+} count_arr_t;
+
+typedef struct {
+	uint16_t count;
+	Index idx[1][3];
+} count_idx_t;
+
+static void createIndexedPolarSphere(
+	count_arr_t *count_arr,
+	count_idx_t *count_idx,
+	const int rows,
+	const int cols,
+	const float r) __attribute__ ((noinline));
+/**
+  * @brief Bend a polar sphere from a grid of the specified dimensions
+  * @param count_arr: Counted vertex array to fill; must provide sufficient space for the specified mesh
+  * @param count_idx: Counted index array to fill; must provide sufficient space for the specified mesh
+  * @param rows: Rows of the mesh; minimum 3
+  * @param cols: Columns of the mesh; minimum 4
+  * @param r: Sphere radius
+  * @retval None
+  *
+  * Example 4x5 grid:
+  *
+  *   0       1       2       3       4
+  * 0     +       +       +       +
+  *     /       /       /       /
+  * 1 +       +       +       +       +
+  *   |       |       |       |       |
+  * 2 +       +       +       +       +
+  *         /       /       /       /
+  * 3     +       +       +       +
+  */
+static void createIndexedPolarSphere(
+	count_arr_t *count_arr,
+	count_idx_t *count_idx,
+	const int rows,
+	const int cols,
+	const float r)
+{
+	assert(rows > 2);
+	assert(cols > 3);
+
+	const size_t num_verts = (rows - 2) * cols + 2 * (cols - 1);
+	const size_t num_tris = ((rows - 3) * 2 + 2) * (cols - 1);
+
+	assert(num_verts <= (uint16_t) -1U);
+	assert(num_tris <= (uint16_t) -1U);
+
+	count_arr->count = (uint16_t) num_verts;
+	count_idx->count = (uint16_t) num_tris;
+
+	Vertex *arr = count_arr->arr;
+	Index (*idx)[3] = count_idx->idx;
+
+	unsigned ai = 0;
+
+	// north pole
+	for (int j = 0; j < cols - 1; ++j) {
+		assert(ai < num_verts);
+
+		arr[ai].pos[0] = 0.f;
+		arr[ai].pos[1] = 0.f;
+		arr[ai].pos[2] = r;
+
+		++ai;
+	}
+
+	// interior
+	for (int i = 1; i < rows - 1; ++i)
+		for (int j = 0; j < cols; ++j) {
+			assert(ai < num_verts);
+
+			const float azim = j * 2 * M_PI / (cols - 1);
+			const float decl = M_PI_2 - i * M_PI / (rows - 1);
+			const float sin_azim = sinf(azim);
+			const float cos_azim = cosf(azim);
+			const float sin_decl = sinf(decl);
+			const float cos_decl = cosf(decl);
+
+			arr[ai].pos[0] = r * cos_decl * cos_azim;
+			arr[ai].pos[1] = r * cos_decl * sin_azim;
+			arr[ai].pos[2] = r * sin_decl;
+
+			++ai;
+		}
+
+	// south pole
+	for (int j = 0; j < cols - 1; ++j) {
+		assert(ai < num_verts);
+
+		arr[ai].pos[0] = 0.f;
+		arr[ai].pos[1] = 0.f;
+		arr[ai].pos[2] = -r;
+
+		++ai;
+	}
+
+	assert(ai == num_verts);
+
+	unsigned ii = 0;
+
+	// north pole
+	for (unsigned j = 0; j < cols - 1; ++j) {
+		if (j & 1) continue; /* checker the shpere */
+
+		assert(ii < num_tris);
+
+		idx[ii][0] = (Index)(j);
+		idx[ii][1] = (Index)(j + cols - 1);
+		idx[ii][2] = (Index)(j + cols);
+		++ii;
+	}
+
+	// interior
+	for (int i = 1; i < rows - 2; ++i)
+		for (int j = 0; j < cols - 1; ++j) {
+			if ((j ^ i) & 1) continue; /* checker the shpere */
+
+			assert(ii < num_tris);
+
+			idx[ii][0] = (Index)(j + i * cols);
+			idx[ii][1] = (Index)(j + i * cols - 1);
+			idx[ii][2] = (Index)(j + (i + 1) * cols);
+			++ii;
+
+			assert(ii < num_tris);
+
+			idx[ii][0] = (Index)(j + (i + 1) * cols - 1);
+			idx[ii][1] = (Index)(j + (i + 1) * cols);
+			idx[ii][2] = (Index)(j + i * cols - 1);
+			++ii;
+		}
+
+	// south pole
+	for (unsigned j = 0; j < cols - 1; ++j) {
+		if ((j & 1) == 0) continue; /* checker the shpere */
+
+		assert(ii < num_tris);
+
+		idx[ii][0] = (Index)(j + (rows - 2) * cols);
+		idx[ii][1] = (Index)(j + (rows - 2) * cols - 1);
+		idx[ii][2] = (Index)(j + (rows - 2) * cols + cols - 1);
+		++ii;
+	}
+}
+
+/* Amiga Boing Ball (polar sphere 9x17) */
+struct { uint16_t count; Vertex arr[151]; } sphere_obj;
+struct { uint16_t count; Index idx[224][3]; } sphere_idx;
 
 /**
   * @brief  The application entry point.
@@ -146,6 +309,12 @@ int main(void)
 		Error_Handler();
 	}
 
+	/* Prepare procedural assets */
+	createIndexedPolarSphere(
+		(count_arr_t *) &sphere_obj,
+		(count_idx_t *) &sphere_idx,
+		9, 17, 80.f);
+
 	/* Enable DWT cycle counter */
 	CoreDebug->DEMCR = CoreDebug->DEMCR | 0x01000000; /* enable trace */
 	DWT->LAR = 0xC5ACCE55;		/* unlock access to DWT registers */
@@ -185,7 +354,7 @@ int main(void)
 		if (buttons & B_Down) {
 			color = 0;
 		}
-		if (buttons & B_A && alt < 14 && i - last_press > press_lim) {
+		if (buttons & B_A && alt < ALT_NUM - 1 && i - last_press > press_lim) {
 			last_press = i;
 			alt++;
 		}
@@ -907,7 +1076,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 6) {
-			/* Inverse, backface-culled wireframe z-rotating CW on color bg */
+			/* Inverse backface-culled wireframe trilist z-rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -1045,7 +1214,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 7) {
-			/* Inverse wireframe rotating CW on color bg */
+			/* Inverse wireframe trilist rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -1229,7 +1398,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 8) {
-			/* Inverse, backface-culled wireframe rotating CW on color bg */
+			/* Inverse backface-culled wireframe trilist rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -1424,7 +1593,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 9) {
-			/* Inverse, backface-culled solid mesh z-rotating CW on color bg */
+			/* Inverse backface-culled solid trilist z-rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -1684,7 +1853,7 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 10) {
-			/* Inverse, backface-culled solid mesh rotating CW on color bg */
+			/* Inverse backface-culled solid trilist rotating CW on color bg */
 			register uint16_t val_color asm ("r0") = color;
 			register uint32_t val_i asm ("r11") = ii;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -2001,6 +2170,365 @@ int main(void)
 			  "r9", "r10", "cc");
 		}
 		else if (alt == 11) {
+			/* Inverse backface-culled solid indexed trilist bouncing and rotating on color bg */
+			register uint16_t val_color asm ("r0") = color;
+			register uint32_t val_i asm ("r11") = ii;
+			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
+
+			__asm__ __volatile__ (
+			/* clear fb to solid color */
+				"bfi	%[color],%[color],#16,#16\n\t"
+				"stmdb	sp!,{%[color],%[idx],%[fb]}\n\t"
+				"movs	r1,%[color]\n\t"
+				"movs	r2,%[color]\n\t"
+				"movs	r3,%[color]\n\t"
+				"movs	r4,%[color]\n\t"
+				"movs	r5,%[color]\n\t"
+				"movs	r6,%[color]\n\t"
+				"movs	r7,%[color]\n\t"
+				"movs	r8,#(320*240*2/(8*4*4))\n\t"
+			"1:\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"stm	%[fb]!,{r0-r7}\n\t"
+				"subs	r8,r8,#1\n\t"
+				"bne	1b\n\t"
+
+			/* vertex coord component, aka R */
+			".equ	R_size, 2\n\t" /* short */
+
+			/* struct R3 */
+			".equ	R3_x, R_size * 0\n\t" /* short */
+			".equ	R3_y, R_size * 1\n\t" /* short */
+			".equ	R3_z, R_size * 2\n\t" /* short */
+			".equ	R3_size, R_size * 3\n\t"
+
+			/* tri index */
+			".equ	idx_size, 2\n\t" /* short */
+
+			/* struct tri */
+			".equ	tri_i0, idx_size * 0\n\t" /* short */
+			".equ	tri_i1, idx_size * 1\n\t" /* short */
+			".equ	tri_i2, idx_size * 2\n\t" /* short */
+			".equ	tri_size, idx_size * 3\n\t"
+
+			/* matrix element, aka E */
+			".equ	E_size, 4\n\t" /* word */
+
+			/* struct row */
+			".equ	row_x, E_size * 0\n\t" /* word */
+			".equ	row_y, E_size * 1\n\t" /* word */
+			".equ	row_z, E_size * 2\n\t" /* word */
+			".equ	row_size, E_size * 3\n\t"
+
+			/* struct mat */
+			".equ	mat_0, row_size * 0\n\t" /* row */
+			".equ	mat_1, row_size * 1\n\t" /* row */
+			".equ	mat_2, row_size * 2\n\t" /* row */
+			".equ	mat_size, row_size * 3\n\t"
+
+			/* plot tris */
+			/* transform obj -> scr */
+				"negs	r0,%[idx]\n\t" /* r10: cosB */
+				"bl	cos15\n\t"
+				"movs	r10,r0\n\t"
+				"negs	r0,%[idx]\n\t" /* r9: sinB */
+				"bl	sin15\n\t"
+				"movs	r9,r0\n\t"
+
+				"movs	r0,%[idx]\n\t" /* r1: cosA */
+				"bl	cos15\n\t"
+				"movs	r1,r0\n\t"
+				"movs	r0,%[idx]\n\t" /* r0: sinA */
+				"bl	sin15\n\t"
+
+				/* preload mat_{0,1,2} */
+				"movs	r3,r1\n\t"	/* m00: cosA */
+				"mul	r4,r0,r10\n\t"	/* m01: sinA cosB */
+				"mul	r5,r0,r9\n\t"	/* m02: sinA sinB */
+
+				"negs	r6,r0\n\t"	/* m10: -sinA */
+				"mul	r7,r1,r10\n\t"	/* m11: cosA cosB */
+				"mul	r8,r1,r9\n\t"	/* m12: cosA sinB */
+
+				"movs	r11,r10\n\t"	/* m22: cosB */
+				"negs	r10,r9\n\t"	/* m21: -sinB */
+				"movs	r9,#0\n\t"	/* m20: 0 */
+
+				/* store translation (0, -64 * abs(cosA), 0) */
+				"asrs	r0,r1,#31\n\t"
+				"eors	r1,r1,r0\n\t"
+				"subs	r1,r1,r0\n\t"
+				"lsls	r0,r1,#6\n\t"
+				"negs	r0,r0\n\t"
+				"movs	r1,#0\n\t"
+				"stmdb	sp!,{r0-r1}\n\t"
+				"stmdb	sp!,{r1}\n\t"
+
+				/* fx2.30 -> fx17.15 */
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#0\n\t"
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#0\n\t"
+				"asrs	r7,r7,#15\n\t"
+				"adcs	r7,r7,#0\n\t"
+				"asrs	r8,r8,#15\n\t"
+				"adcs	r8,r8,#0\n\t"
+
+				/* store mat_0 */
+				"stmdb	sp!,{r3-r5}\n\t"
+
+				"ldr	r12,=sphere_obj\n\t"
+				"ldrh	r14,[r12],#2\n\t"
+				"movs	r0,#R3_size\n\t"
+				"mul	r14,r14,r0\n\t"
+				"adds	r14,r14,r12\n\t"
+
+				/* store mesh_obj_end */
+				"stmdb	sp!,{r14}\n\t"
+				"ldr	r14,=mesh_scr\n\t"
+			"2:\n\t"
+				"ldrsh	r0,[r12],#2\n\t" /* v_in.x */
+				"ldrsh	r1,[r12],#2\n\t" /* v_in.y */
+				"ldrsh	r2,[r12],#2\n\t" /* v_in.z */
+
+				/* inline mul_vec3_mat_tr to reduce reg pressure */
+				"muls	r3,r3,r0\n\t"
+				"muls	r4,r4,r0\n\t"
+				"muls	r5,r5,r0\n\t"
+
+				"ldr	r0,[sp,#16]\n\t"
+
+				"mla	r3,r6,r1,r3\n\t"
+				"mla	r4,r7,r1,r4\n\t"
+				"mla	r5,r8,r1,r5\n\t"
+
+				"ldr	r1,[sp,#20]\n\t"
+
+				"mla	r3,r9, r2,r3\n\t"
+				"mla	r4,r10,r2,r4\n\t"
+				"mla	r5,r11,r2,r5\n\t"
+
+				"ldr	r2,[sp,#24]\n\t"
+
+				"adds	r3,r3,r0\n\t"
+				"adds	r4,r4,r1\n\t"
+				"adds	r5,r5,r2\n\t"
+
+				/* fx16.15 -> int16 */
+				"asrs	r3,r3,#15\n\t"
+				"adcs	r3,r3,#160\n\t"
+				"asrs	r4,r4,#15\n\t"
+				"adcs	r4,r4,#150\n\t"
+				"asrs	r5,r5,#15\n\t"
+				"adcs	r5,r5,#0\n\t"
+
+				"strh	r3,[r14],#2\n\t" /* v_out.x */
+				"strh	r4,[r14],#2\n\t" /* v_out.y */
+				"strh	r5,[r14],#2\n\t" /* v_out.z */
+
+				/* restore mesh_obj_end and mat_0 */
+				"ldm	sp,{r0,r3-r5}\n\t"
+
+				"cmp	r0,r12\n\t"
+				"bne	2b\n\t"
+
+				"adds	sp,sp,#7 * 4\n\t"
+
+				/* scan-convert the scr-space tris */
+				"ldr	r10,=sphere_idx\n\t"
+				"ldrh	r9,[r10],#2\n\t"
+				"movs	r14,#tri_size\n\t"
+				"mul	r9,r9,r14\n\t"
+				"adds	r9,r9,r10\n\t"
+			"3:\n\t"
+				"ldr	r14,=mesh_scr\n\t"
+				"ldrh	r1,[r10],#idx_size\n\t"
+				"ldrh	r3,[r10],#idx_size\n\t"
+				"ldrh	r5,[r10],#idx_size\n\t"
+
+				"adds	r1,r1,r1,lsl #1\n\t"
+				"adds	r3,r3,r3,lsl #1\n\t"
+				"adds	r5,r5,r5,lsl #1\n\t"
+				"adds	r1,r14,r1,lsl #1\n\t"
+				"adds	r3,r14,r3,lsl #1\n\t"
+				"adds	r5,r14,r5,lsl #1\n\t"
+
+				"subs	r12,sp,#pb_size\n\t"
+				/* compute parallelogram basis */
+				"ldrsh	r0,[r1,#R3_x]\n\t"
+				"ldrsh	r1,[r1,#R3_y]\n\t"
+				"ldrsh	r2,[r3,#R3_x]\n\t"
+				"ldrsh	r3,[r3,#R3_y]\n\t"
+				"ldrsh	r4,[r5,#R3_x]\n\t"
+				"ldrsh	r5,[r5,#R3_y]\n\t"
+				/* preserve p1-p2 from clobber by init_pb */
+				"movs	r6,r2\n\t"
+				"movs	r7,r3\n\t"
+				"movs	r8,r4\n\t"
+				"movs	r11,r5\n\t"
+				"bl	init_pb\n\t"
+				/* skip tris of negative or zero area */
+				"ble	7f\n\t"
+
+				/* restore p1-p2 */
+				"movs	r2,r6\n\t"
+				"movs	r3,r7\n\t"
+				"movs	r4,r8\n\t"
+				"movs	r5,r11\n\t"
+
+				/* compute tri AABB */
+				/* ascending sort in x-direction */
+				"movs	r6,r0\n\t"
+				"movs	r7,r2\n\t"
+				"movs	r8,r4\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	31f\n\t"
+
+				"movs	r6,r2\n\t"
+				"movs	r7,r0\n\t"
+			"31:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	32f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"32:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	33f\n\t"
+
+				"movs	r8,r7\n\t"
+			"33:\n\t"
+				/* intersect tri x-span with fb x-span */
+				"cmp	r6,#0\n\t"
+				"bge	331f\n\t"
+				"movs	r6,#0\n\t"
+			"331:\n\t"
+				"cmp	r8,#320\n\t"
+				"blt	332f\n\t"
+				"movw	r8,#320-1\n\t"
+			"332:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+
+				/* store x_min, x_max */
+				"strd	r6,r8,[r12,#-8]\n\t"
+
+				/* ascending sort in y-direction */
+				"movs	r6,r1\n\t"
+				"movs	r7,r3\n\t"
+				"movs	r8,r5\n\t"
+
+				"cmp	r6,r7\n\t"
+				"ble	34f\n\t"
+
+				"movs	r6,r3\n\t"
+				"movs	r7,r1\n\t"
+			"34:\n\t"
+				"cmp	r6,r8\n\t"
+				"ble	35f\n\t"
+
+				"bfi	r6,r8,#16,#16\n\t"
+				"sxth	r8,r6\n\t"
+				"asrs	r6,r6,#16\n\t"
+			"35:\n\t"
+				"cmp	r7,r8\n\t"
+				"ble	36f\n\t"
+
+				"movs	r8,r7\n\t"
+			"36:\n\t"
+				/* intersect tri y-span with fb y-span */
+				"cmp	r6,#0\n\t"
+				"bge	361f\n\t"
+				"movs	r6,#0\n\t"
+			"361:\n\t"
+				"cmp	r8,#240\n\t"
+				"blt	362f\n\t"
+				"movs	r8,#240-1\n\t"
+			"362:\n\t"
+				"cmp	r6,r8\n\t"
+				"bgt	7f\n\t"
+
+				/* store y_min, y_max */
+				"strd	r6,r8,[r12,#-16]\n\t"
+				"movs	r7,r6\n\t"
+
+				/* preload p0 */
+				"movs	r2,r0\n\t"
+				"movs	r3,r1\n\t"
+				/* preload pb.e01, pb.e02, pb.area */
+				"ldm	r12,{r4-r6}\n\t"
+
+				/* preload color and fb ptr */
+				"ldr	r8,[sp]\n\t"
+				"ldr	%[fb],[sp,#8]\n\t"
+				"mvns	r8,r8\n\t"
+
+				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
+
+				/* iterate AABB along y */
+				"movs	r11,#640\n\t"
+				"mla	%[fb],r7,r11,%[fb]\n\t"
+			"4:\n\t"
+				/* iterate AABB along x */
+				"ldr	r11,[sp,#-12]\n\t"
+			"5:\n\t"
+				/* get barycentric coords for x,y */
+				"movs	r0,r11\n\t"
+				"movs	r1,r7\n\t"
+
+				/* see barycentric.s:get_coord */
+				"subs	r0,r0,r2\n\t"
+				"subs	r1,r1,r3\n\t"
+
+				"movs	r9,r0\n\t"
+				"movs	r10,r1\n\t"
+
+				"smulbt	r0,r0,r5\n\t"
+				"smulbb	r1,r1,r4\n\t"
+				"smulbt	r9,r9,r4\n\t"
+				"smulbb	r10,r10,r5\n\t"
+
+				/* if {s|t} < 0 || (s+t) > pb.area then pixel is outside */
+				"subs	r1,r1,r9\n\t"
+				"blt	6f\n\t"
+				"subs	r0,r0,r10\n\t"
+				"blt	6f\n\t"
+
+				"adds	r0,r0,r1\n\t"
+				"cmp	r0,r6\n\t"
+				"bgt	6f\n\t"
+				/* plot pixel */
+				"strh	r8,[%[fb],r11,lsl #1]\n\t"
+			"6:\n\t"
+				"ldr	r0,[sp,#-8]\n\t"
+				"adds	r11,r11,#1\n\t"
+				"cmp	r11,r0\n\t"
+				"bls	5b\n\t"
+
+				"ldr	r1,[sp,#-16]\n\t"
+				"adds	%[fb],%[fb],#640\n\t"
+				"adds	r7,r7,#1\n\t"
+				"cmp	r7,r1\n\t"
+				"bls	4b\n\t"
+
+				"ldmia	sp!,{r9-r10}\n\t"
+			"7:\n\t"
+				"cmp	r10,r9\n\t"
+				"bne	3b\n\t"
+
+				"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
+			: /* none */
+			: [color] "r" (val_color),
+			  [idx] "r" (val_i),
+			  [fb] "r" (ptr_fb)
+			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+			  "r9", "r10", "cc");
+		}
+		else if (alt == 12) {
 			/* Color font 8x16 on black bg */
 			register uint16_t val_color asm ("r0") = 0;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -2036,7 +2564,7 @@ int main(void)
 						&fnt_wang_8x16 + 16 * (ch & 0xff));
 				}
 		}
-		else if (alt == 12) {
+		else if (alt == 13) {
 			/* Color font 8x8 on black bg */
 			register uint16_t val_color asm ("r0") = 0;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -2072,7 +2600,7 @@ int main(void)
 						&fnt_wang_8x8 + 8 * (ch & 0xff));
 				}
 		}
-		else if (alt == 13) {
+		else if (alt == 14) {
 			/* Blue turtle-shell pattern */
 #if 1
 			for(int y=0, row=0; y < 240; y++, row+=320) {
