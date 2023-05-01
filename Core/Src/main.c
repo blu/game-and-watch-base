@@ -1211,7 +1211,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 7) {
 			/* Inverse wireframe trilist rotating CW on color bg */
@@ -1395,7 +1395,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 8) {
 			/* Inverse backface-culled wireframe trilist rotating CW on color bg */
@@ -1590,7 +1590,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 9) {
 			/* Inverse backface-culled solid trilist z-rotating CW on color bg */
@@ -1850,7 +1850,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 10) {
 			/* Inverse backface-culled solid trilist rotating CW on color bg */
@@ -2167,7 +2167,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 11) {
 			/* Inverse backface-culled solid indexed trilist bouncing and rotating on color bg */
@@ -2526,7 +2526,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 12) {
 			/* Color font 8x16 on black bg */
