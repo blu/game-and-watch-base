@@ -960,6 +960,7 @@ int main(void)
 #endif
 				/* store x_min, x_max */
 				"strd	r6,r8,[r12,#-8]\n\t"
+				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
 				"movs	r6,r1\n\t"
@@ -1022,12 +1023,9 @@ int main(void)
 				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
-				"movs	r0,r11\n\t"
-				"movs	r1,r7\n\t"
-
 				/* see barycentric.s:get_coord */
-				"subs	r0,r0,r2\n\t"
-				"subs	r1,r1,r3\n\t"
+				"subs	r0,r11,r2\n\t"
+				"subs	r1,r7,r3\n\t"
 
 				"movs	r9,r0\n\t"
 				"movs	r10,r1\n\t"
@@ -1049,9 +1047,8 @@ int main(void)
 				/* plot pixel */
 				"strh	r8,[%[fb],r11,lsl #1]\n\t"
 			"6:\n\t"
-				"ldr	r0,[sp,#-8]\n\t"
 				"adds	r11,r11,#1\n\t"
-				"cmp	r11,r0\n\t"
+				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
 				"ldr	r1,[sp,#-16]\n\t"
@@ -1073,7 +1070,7 @@ int main(void)
 			  [idx] "r" (val_i),
 			  [fb] "r" (ptr_fb)
 			: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-			  "r9", "r10", "cc");
+			  "r9", "r10", "r14", "cc");
 		}
 		else if (alt == 6) {
 			/* Inverse backface-culled wireframe trilist z-rotating CW on color bg */
@@ -1739,6 +1736,7 @@ int main(void)
 
 				/* store x_min, x_max */
 				"strd	r6,r8,[r12,#-8]\n\t"
+				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
 				"movs	r6,r1\n\t"
@@ -1800,12 +1798,9 @@ int main(void)
 				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
-				"movs	r0,r11\n\t"
-				"movs	r1,r7\n\t"
-
 				/* see barycentric.s:get_coord */
-				"subs	r0,r0,r2\n\t"
-				"subs	r1,r1,r3\n\t"
+				"subs	r0,r11,r2\n\t"
+				"subs	r1,r7,r3\n\t"
 
 				"movs	r9,r0\n\t"
 				"movs	r10,r1\n\t"
@@ -1827,9 +1822,8 @@ int main(void)
 				/* plot pixel */
 				"strh	r8,[%[fb],r11,lsl #1]\n\t"
 			"6:\n\t"
-				"ldr	r0,[sp,#-8]\n\t"
 				"adds	r11,r11,#1\n\t"
-				"cmp	r11,r0\n\t"
+				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
 				"ldr	r1,[sp,#-16]\n\t"
@@ -2056,6 +2050,7 @@ int main(void)
 
 				/* store x_min, x_max */
 				"strd	r6,r8,[r12,#-8]\n\t"
+				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
 				"movs	r6,r1\n\t"
@@ -2117,12 +2112,9 @@ int main(void)
 				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
-				"movs	r0,r11\n\t"
-				"movs	r1,r7\n\t"
-
 				/* see barycentric.s:get_coord */
-				"subs	r0,r0,r2\n\t"
-				"subs	r1,r1,r3\n\t"
+				"subs	r0,r11,r2\n\t"
+				"subs	r1,r7,r3\n\t"
 
 				"movs	r9,r0\n\t"
 				"movs	r10,r1\n\t"
@@ -2144,9 +2136,8 @@ int main(void)
 				/* plot pixel */
 				"strh	r8,[%[fb],r11,lsl #1]\n\t"
 			"6:\n\t"
-				"ldr	r0,[sp,#-8]\n\t"
 				"adds	r11,r11,#1\n\t"
-				"cmp	r11,r0\n\t"
+				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
 				"ldr	r1,[sp,#-16]\n\t"
@@ -2416,6 +2407,7 @@ int main(void)
 
 				/* store x_min, x_max */
 				"strd	r6,r8,[r12,#-8]\n\t"
+				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
 				"movs	r6,r1\n\t"
@@ -2477,12 +2469,9 @@ int main(void)
 				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
-				"movs	r0,r11\n\t"
-				"movs	r1,r7\n\t"
-
 				/* see barycentric.s:get_coord */
-				"subs	r0,r0,r2\n\t"
-				"subs	r1,r1,r3\n\t"
+				"subs	r0,r11,r2\n\t"
+				"subs	r1,r7,r3\n\t"
 
 				"movs	r9,r0\n\t"
 				"movs	r10,r1\n\t"
@@ -2504,9 +2493,8 @@ int main(void)
 				/* plot pixel */
 				"strh	r8,[%[fb],r11,lsl #1]\n\t"
 			"6:\n\t"
-				"ldr	r0,[sp,#-8]\n\t"
 				"adds	r11,r11,#1\n\t"
-				"cmp	r11,r0\n\t"
+				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
 				"ldr	r1,[sp,#-16]\n\t"
