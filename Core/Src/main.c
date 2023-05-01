@@ -958,8 +958,9 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 #endif
-				/* store x_min, x_max */
-				"strd	r6,r8,[r12,#-8]\n\t"
+				/* store x_min, preload x_min and x_max */
+				"str	r6,[r12,#-4]\n\t"
+				"movs	r11,r6\n\t"
 				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
@@ -998,8 +999,8 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 #endif
-				/* store y_min, y_max */
-				"strd	r6,r8,[r12,#-16]\n\t"
+				/* store y_max, preload y_min */
+				"str 	r8,[r12,#-8]\n\t"
 				"movs	r7,r6\n\t"
 
 				/* preload p0 */
@@ -1016,11 +1017,10 @@ int main(void)
 				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
 
 				/* iterate AABB along y */
-				"movs	r11,#640\n\t"
-				"mla	%[fb],r7,r11,%[fb]\n\t"
+				"movs	r9,#640\n\t"
+				"mla	%[fb],r7,r9,%[fb]\n\t"
 			"4:\n\t"
 				/* iterate AABB along x */
-				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
 				/* see barycentric.s:get_coord */
@@ -1051,7 +1051,7 @@ int main(void)
 				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
-				"ldr	r1,[sp,#-16]\n\t"
+				"ldrd	r1,r11,[sp,#-12]\n\t"
 				"adds	%[fb],%[fb],#640\n\t"
 				"adds	r7,r7,#1\n\t"
 				"cmp	r7,r1\n\t"
@@ -1734,8 +1734,9 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 
-				/* store x_min, x_max */
-				"strd	r6,r8,[r12,#-8]\n\t"
+				/* store x_min, preload x_min and x_max */
+				"str	r6,[r12,#-4]\n\t"
+				"movs	r11,r6\n\t"
 				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
@@ -1773,8 +1774,8 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 
-				/* store y_min, y_max */
-				"strd	r6,r8,[r12,#-16]\n\t"
+				/* store y_max, preload y_min */
+				"str	r8,[r12,#-8]\n\t"
 				"movs	r7,r6\n\t"
 
 				/* preload p0 */
@@ -1791,11 +1792,10 @@ int main(void)
 				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
 
 				/* iterate AABB along y */
-				"movs	r11,#640\n\t"
-				"mla	%[fb],r7,r11,%[fb]\n\t"
+				"movs	r9,#640\n\t"
+				"mla	%[fb],r7,r9,%[fb]\n\t"
 			"4:\n\t"
 				/* iterate AABB along x */
-				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
 				/* see barycentric.s:get_coord */
@@ -1826,7 +1826,7 @@ int main(void)
 				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
-				"ldr	r1,[sp,#-16]\n\t"
+				"ldrd	r1,r11,[sp,#-12]\n\t"
 				"adds	%[fb],%[fb],#640\n\t"
 				"adds	r7,r7,#1\n\t"
 				"cmp	r7,r1\n\t"
@@ -2048,8 +2048,9 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 
-				/* store x_min, x_max */
-				"strd	r6,r8,[r12,#-8]\n\t"
+				/* store x_min, preload x_min and x_max */
+				"str	r6,[r12,#-4]\n\t"
+				"movs	r11,r6\n\t"
 				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
@@ -2087,8 +2088,8 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 
-				/* store y_min, y_max */
-				"strd	r6,r8,[r12,#-16]\n\t"
+				/* store y_max, preload y_min */
+				"str	r8,[r12,#-8]\n\t"
 				"movs	r7,r6\n\t"
 
 				/* preload p0 */
@@ -2105,11 +2106,10 @@ int main(void)
 				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
 
 				/* iterate AABB along y */
-				"movs	r11,#640\n\t"
-				"mla	%[fb],r7,r11,%[fb]\n\t"
+				"movs	r9,#640\n\t"
+				"mla	%[fb],r7,r9,%[fb]\n\t"
 			"4:\n\t"
 				/* iterate AABB along x */
-				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
 				/* see barycentric.s:get_coord */
@@ -2140,7 +2140,7 @@ int main(void)
 				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
-				"ldr	r1,[sp,#-16]\n\t"
+				"ldrd	r1,r11,[sp,#-12]\n\t"
 				"adds	%[fb],%[fb],#640\n\t"
 				"adds	r7,r7,#1\n\t"
 				"cmp	r7,r1\n\t"
@@ -2405,8 +2405,9 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 
-				/* store x_min, x_max */
-				"strd	r6,r8,[r12,#-8]\n\t"
+				/* store x_min, preload x_min and x_max */
+				"str	r6,[r12,#-4]\n\t"
+				"movs	r11,r6\n\t"
 				"movs	r14,r8\n\t"
 
 				/* ascending sort in y-direction */
@@ -2444,8 +2445,8 @@ int main(void)
 				"cmp	r6,r8\n\t"
 				"bgt	7f\n\t"
 
-				/* store y_min, y_max */
-				"strd	r6,r8,[r12,#-16]\n\t"
+				/* store y_max, preload y_min */
+				"str	r8,[r12,#-8]\n\t"
 				"movs	r7,r6\n\t"
 
 				/* preload p0 */
@@ -2462,11 +2463,10 @@ int main(void)
 				"stmdb	sp!,{r9-r10}\n\t" /* att: room for 12B */
 
 				/* iterate AABB along y */
-				"movs	r11,#640\n\t"
-				"mla	%[fb],r7,r11,%[fb]\n\t"
+				"movs	r9,#640\n\t"
+				"mla	%[fb],r7,r9,%[fb]\n\t"
 			"4:\n\t"
 				/* iterate AABB along x */
-				"ldr	r11,[sp,#-12]\n\t"
 			"5:\n\t"
 				/* get barycentric coords for x,y */
 				/* see barycentric.s:get_coord */
@@ -2497,7 +2497,7 @@ int main(void)
 				"cmp	r11,r14\n\t"
 				"bls	5b\n\t"
 
-				"ldr	r1,[sp,#-16]\n\t"
+				"ldrd	r1,r11,[sp,#-12]\n\t"
 				"adds	%[fb],%[fb],#640\n\t"
 				"adds	r7,r7,#1\n\t"
 				"cmp	r7,r1\n\t"
