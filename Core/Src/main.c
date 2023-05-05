@@ -148,14 +148,11 @@ static void createIndexedPolarSphere(
 	assert(rows > 2);
 	assert(cols > 3);
 
-	const size_t num_verts = (rows - 2) * cols + 2 * (cols - 1);
-	const size_t num_tris = ((rows - 3) * 2 + 2) * (cols - 1);
+	const size_t num_verts __attribute__ ((unused)) = (rows - 2) * cols + 2 * (cols - 1);
+	const size_t num_tris __attribute__ ((unused)) = ((rows - 3) * 2 + 2) * (cols - 1);
 
 	assert(num_verts <= (uint16_t) -1U);
 	assert(num_tris <= (uint16_t) -1U);
-
-	count_arr->count = (uint16_t) num_verts;
-	count_idx->count = (uint16_t) num_tris;
 
 	Vertex *arr = count_arr->arr;
 	Index (*idx)[3] = count_idx->idx;
@@ -204,6 +201,7 @@ static void createIndexedPolarSphere(
 	}
 
 	assert(ai == num_verts);
+	count_arr->count = (uint16_t) ai;
 
 	unsigned ii = 0;
 
@@ -241,7 +239,7 @@ static void createIndexedPolarSphere(
 
 	// south pole
 	for (unsigned j = 0; j < cols - 1; ++j) {
-		if ((j & 1) == 0) continue; /* checker the shpere */
+		if ((j & 1) == (rows - 1 & 1)) continue; /* checker the shpere */
 
 		assert(ii < num_tris);
 
@@ -250,6 +248,9 @@ static void createIndexedPolarSphere(
 		idx[ii][2] = (Index)(j + (rows - 2) * cols + cols - 1);
 		++ii;
 	}
+
+	assert(ii == num_tris || ii == num_tris / 2);
+	count_idx->count = (uint16_t) ii;
 }
 
 /* Amiga Boing Ball (polar sphere 9x17) */
