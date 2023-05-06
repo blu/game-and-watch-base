@@ -10,11 +10,10 @@
 .equ	R2_y, R_size * 1 /* short */
 .equ	R2_size, R_size * 2
 
-/* struct pb (parallelogram basis) */
+/* struct pb (parallelogram basis), head of */
 .equ	pb_e01,  R2_size * 0 /* R2 */
 .equ	pb_e02,  R2_size * 1 /* R2 */
 .equ	pb_area, R2_size * 2 /* word */
-.equ	pb_size, R2_size * 2 + 4
 
 	.section .text.init_pb
 	.weak init_pb
@@ -33,6 +32,7 @@
 // r12: parallelogram basis ptr
 // returns: cc: Z: zero area
 //              N,V: polarity of area
+//          r2: area
 	.balign 32
 init_pb:
 	subs	r2,r2,r0 // e01.x = p1.x - p0.x
