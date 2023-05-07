@@ -1483,6 +1483,12 @@ int main(void)
 			".equ	tri_p2, R3_size * 2\n\t" /* R3 */
 			".equ	tri_size, R3_size * 3\n\t"
 
+			/* struct pb (parallelogram basis) */
+			".equ	pb_e01,  R2_size * 0\n\t" /* R2 */
+			".equ	pb_e02,  R2_size * 1\n\t" /* R2 */
+			".equ	pb_area, R2_size * 2\n\t" /* word */
+			".equ	pb_size, R2_size * 2 + 4\n\t"
+
 			/* plot tris */
 			/* transform obj -> scr */
 				/* preload cos(idx) */
