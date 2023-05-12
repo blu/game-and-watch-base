@@ -2357,22 +2357,26 @@ static void alt_rot3d_solid_trilist_bc_zb(const uint16_t color, uint32_t ii, voi
 		"subs	r8,r6\n\t"
 		"bgt	6f\n\t"
 
+		"ldr	r10,[sp,#16+pb_at0]\n\t"
+		"ldrh	r9,[sp,#16+pb_at2]\n\t"
 		"negs	r8,r8\n\t"
 		/* barycentric {s,t,u} in {r0,r1,r8} */
-		"ldrsh	r10,[sp,#16+pb_at0]\n\t"
-		"ldrsh	r9,[sp,#16+pb_at1]\n\t"
-		"mul	r10,r10,r8\n\t"
-		"ldrsh	r8,[sp,#16+pb_at2]\n\t"
-		"mul	r9,r9,r0\n\t"
-		"mul	r8,r8,r1\n\t"
-		"adds	r10,r10,r9\n\t"
-		"adds	r10,r10,r8\n\t"
+
+		/* att: for the next weighing we ideally want
+		   a 32b * 16b -> 32b mul, alas smulwx is not it;
+		   fall back to smulxy and cross fingers primitive
+		   doubled surface area does not exceed 16b */
+		"smulbb	r8,r8,r10\n\t"
+		"smulbt	r0,r0,r10\n\t"
+		"smulbb	r1,r1,r9\n\t"
+		"adds	r8,r8,r0\n\t"
+		"adds	r8,r8,r1\n\t"
 		"ldrsh	r9,[%[fb],r11,lsl #1]\n\t"
-		"sdiv	r10,r10,r6\n\t"
+		"sdiv	r8,r8,r6\n\t"
 		/* update zbuf */
-		"cmp	r10,r9\n\t"
+		"cmp	r8,r9\n\t"
 		"blt	6f\n\t"
-		"strh	r10,[%[fb],r11,lsl #1]\n\t"
+		"strh	r8,[%[fb],r11,lsl #1]\n\t"
 	"6:\n\t"
 		"adds	r11,r11,#1\n\t"
 		"cmp	r11,r14\n\t"
