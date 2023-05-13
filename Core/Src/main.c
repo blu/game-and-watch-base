@@ -92,7 +92,7 @@ short tri_obj_0[2 * 3 * 4] __attribute__ ((used)) = {
 static void deepsleep() __attribute__ ((noinline));
 static void print_x32(uint16_t color, void *out_fb, uint32_t val) __attribute__ ((noinline));
 
-#define ALT_NUM	17
+#define ALT_NUM	18
 
 uint32_t cycle[ALT_NUM];
 
@@ -261,6 +261,7 @@ static void alt_rot2d_dots(const uint16_t color, uint32_t ii, void *framebuffer)
 static void alt_rot2d_lines(const uint16_t color, uint32_t ii, void *framebuffer) __attribute__ ((noinline));
 static void alt_rot2d_wire_triforce(const uint16_t color, uint32_t ii, void *framebuffer) __attribute__ ((noinline));
 static void alt_rot2d_solid_triforce(const uint16_t color, uint32_t ii, void *framebuffer) __attribute__ ((noinline));
+static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebuffer) __attribute__ ((noinline));
 static void alt_rot2d_wire_trilist_bc(const uint16_t color, uint32_t ii, void *framebuffer) __attribute__ ((noinline));
 static void alt_rot2d_solid_trilist_bc(const uint16_t color, uint32_t ii, void *framebuffer) __attribute__ ((noinline));
 
@@ -921,6 +922,275 @@ static void alt_rot2d_solid_triforce(const uint16_t color, uint32_t ii, void *fr
 		"cmp	r10,r9\n\t"
 		"bne	3b\n\t"
 
+		"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
+	: /* none */
+	: [color] "r" (val_color),
+	  [idx] "r" (val_i),
+	  [fb] "r" (ptr_fb)
+	: "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
+	  "r9", "r10", "r14", "cc");
+}
+
+uint16_t mask_shift[2] __attribute__ ((aligned(4)));
+
+static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebuffer)
+{
+	/* Color gradient solid triangle rotating CW on color bg */
+	register uint16_t val_color asm ("r0") = color;
+	register uint32_t val_i asm ("r11") = ii;
+	register void *ptr_fb asm ("r12") = framebuffer;
+
+	__asm__ __volatile__ (
+	/* clear fb to solid color */
+		"bfi	%[color],%[color],#16,#16\n\t"
+		"stmdb	sp!,{%[color],%[idx],%[fb]}\n\t"
+		"movs	r1,%[color]\n\t"
+		"movs	r2,%[color]\n\t"
+		"movs	r3,%[color]\n\t"
+		"movs	r4,%[color]\n\t"
+		"movs	r5,%[color]\n\t"
+		"movs	r6,%[color]\n\t"
+		"movs	r7,%[color]\n\t"
+		"movs	r8,#(320*240*2/(8*4*4))\n\t"
+	"1:\n\t"
+		"stm	%[fb]!,{r0-r7}\n\t"
+		"stm	%[fb]!,{r0-r7}\n\t"
+		"stm	%[fb]!,{r0-r7}\n\t"
+		"stm	%[fb]!,{r0-r7}\n\t"
+		"subs	r8,r8,#1\n\t"
+		"bne	1b\n\t"
+
+	/* vertex coord component, aka R */
+	".equ	R_size, 2\n\t" /* short */
+
+	/* struct R2 */
+	".equ	R2_x, R_size * 0\n\t" /* short */
+	".equ	R2_y, R_size * 1\n\t" /* short */
+	".equ	R2_size, R_size * 2\n\t"
+
+	/* struct tri */
+	".equ	tri_p0, R2_size * 0\n\t" /* R2 */
+	".equ	tri_p1, R2_size * 1\n\t" /* R2 */
+	".equ	tri_p2, R2_size * 2\n\t" /* R2 */
+	".equ	tri_size, R2_size * 3\n\t"
+
+	/* struct pb (parallelogram basis) */
+	".equ	pb_e01,  R2_size * 0\n\t" /* R2 */
+	".equ	pb_e02,  R2_size * 1\n\t" /* R2 */
+	".equ	pb_area, R2_size * 2\n\t" /* word */
+	".equ	pb_size, R2_size * 2 + 4\n\t"
+
+	/* plot tris */
+	/* transform obj -> scr */
+		/* preload cos(idx * 4) */
+		"movs	r0,%[idx]\n\t"
+		"bl	cos15\n\t"
+		"movs	r1,r0\n\t"
+		/* preload sin(idx * 4) */
+		"movs	r0,%[idx]\n\t"
+		"bl	sin15\n\t"
+
+		"ldr	r8,=tri_obj_0\n\t"
+		"adds	r9,r8,#tri_size\n\t"
+		"movs	r10,r9\n\t"
+	"2:\n\t"
+		"ldrsh	r2,[r8],#2\n\t" /* v_in.x */
+		"ldrsh	r3,[r8],#2\n\t" /* v_in.y */
+
+		/* transform vertex x-coord: cos * x - sin * y */
+		"mul	r4,r1,r2\n\t"
+		"mul	r6,r0,r3\n\t"
+		"subs	r4,r4,r6\n\t"
+
+		/* fx16.15 -> int16 */
+		"asrs	r4,r4,#13\n\t"
+		"adcs	r4,r4,#160\n\t"
+
+		/* transform vertex y-coord: sin * x + cos * y */
+		"mul	r5,r0,r2\n\t"
+		"mul 	r6,r1,r3\n\t"
+		"adds	r5,r5,r6\n\t"
+
+		/* fx16.15 -> int16 */
+		"asrs	r5,r5,#13\n\t"
+		"adcs	r5,r5,#120\n\t"
+
+		"strh	r4,[r9],#2\n\t" /* v_out.x */
+		"strh	r5,[r9],#2\n\t" /* v_out.y */
+
+		"cmp	r8,r10\n\t"
+		"bne	2b\n\t"
+
+		/* scan-convert the scr-space tri */
+		"subs	sp,sp,#8+pb_size\n\t"
+	"3:\n\t"
+		"adds	r12,sp,#8\n\t"
+		/* compute parallelogram basis */
+		"ldrsh	r0,[r10],#2\n\t"
+		"ldrsh	r1,[r10],#2\n\t"
+		"ldrh	r2,[r10],#2\n\t"
+		"ldrh	r3,[r10],#2\n\t"
+		"ldrh	r4,[r10],#2\n\t"
+		"ldrh	r5,[r10],#2\n\t"
+		"bl	init_pb\n\t"
+		/* skip tris of negative or zero area */
+		"ble	7f\n\t"
+
+		"ldrsh	r2,[r10,#-8]\n\t"
+		"ldrsh	r3,[r10,#-6]\n\t"
+		"ldrsh	r4,[r10,#-4]\n\t"
+		"ldrsh	r5,[r10,#-2]\n\t"
+
+		/* compute tri AABB */
+		/* ascending sort in x-direction */
+		"movs	r6,r0\n\t"
+		"movs	r7,r2\n\t"
+		"movs	r8,r4\n\t"
+
+		"cmp	r6,r7\n\t"
+		"ble	31f\n\t"
+
+		"movs	r6,r2\n\t"
+		"movs	r7,r0\n\t"
+	"31:\n\t"
+		"cmp	r6,r8\n\t"
+		"ble	32f\n\t"
+
+		"bfi	r6,r8,#16,#16\n\t"
+		"sxth	r8,r6\n\t"
+		"asrs	r6,r6,#16\n\t"
+	"32:\n\t"
+		"cmp	r7,r8\n\t"
+		"ble	33f\n\t"
+
+		"movs	r8,r7\n\t"
+	"33:\n\t"
+#if 0
+		/* intersect tri x-span with fb x-span */
+		"cmp	r6,#0\n\t"
+		"bge	331f\n\t"
+		"movs	r6,#0\n\t"
+	"331:\n\t"
+		"cmp	r8,#320\n\t"
+		"blt	332f\n\t"
+		"movw	r8,#320-1\n\t"
+	"332:\n\t"
+		"cmp	r6,r8\n\t"
+		"bgt	7f\n\t"
+#endif
+		/* store x_min, preload x_min and x_max */
+		"str	r6,[sp,#4]\n\t"
+		"movs	r11,r6\n\t"
+		"movs	r14,r8\n\t"
+
+		/* ascending sort in y-direction */
+		"movs	r6,r1\n\t"
+		"movs	r7,r3\n\t"
+		"movs	r8,r5\n\t"
+
+		"cmp	r6,r7\n\t"
+		"ble	34f\n\t"
+
+		"movs	r6,r3\n\t"
+		"movs	r7,r1\n\t"
+	"34:\n\t"
+		"cmp	r6,r8\n\t"
+		"ble	35f\n\t"
+
+		"bfi	r6,r8,#16,#16\n\t"
+		"sxth	r8,r6\n\t"
+		"asrs	r6,r6,#16\n\t"
+	"35:\n\t"
+		"cmp	r7,r8\n\t"
+		"ble	36f\n\t"
+
+		"movs	r8,r7\n\t"
+	"36:\n\t"
+#if 0
+		/* intersect tri y-span with fb y-span */
+		"cmp	r6,#0\n\t"
+		"bge	361f\n\t"
+		"movs	r6,#0\n\t"
+	"361:\n\t"
+		"cmp	r8,#240\n\t"
+		"blt	362f\n\t"
+		"movs	r8,#240-1\n\t"
+	"362:\n\t"
+		"cmp	r6,r8\n\t"
+		"bgt	7f\n\t"
+#endif
+		/* store y_max, preload y_min */
+		"str 	r8,[sp,#0]\n\t"
+		"movs	r7,r6\n\t"
+
+		/* preload p0 */
+		"movs	r2,r0\n\t"
+		"movs	r3,r1\n\t"
+		/* preload pb.e01, pb.e02, pb.area */
+		"ldm	r12,{r4-r6}\n\t"
+
+		/* preload fb ptr */
+		"ldr	%[fb],[sp,#8+pb_size+8]\n\t"
+
+		"stmdb	sp!,{r9-r10}\n\t" /* att: room for pb_size bytes */
+
+		/* iterate AABB along y */
+		"ldr	r10,=mask_shift\n\t"
+		"ldr	r10,[r10]\n\t"
+		"movs	r9,#640\n\t"
+		"mla	%[fb],r7,r9,%[fb]\n\t"
+	"4:\n\t"
+		/* iterate AABB along x */
+	"5:\n\t"
+		/* get barycentric coords for x,y */
+		/* see barycentric.s:get_coord */
+		"subs	r0,r11,r2\n\t"
+		"subs	r1,r7,r3\n\t"
+
+		"movs	r8,r0\n\t"
+		"movs	r9,r1\n\t"
+
+		"smulbt	r0,r0,r5\n\t"
+		"smulbb	r1,r1,r4\n\t"
+		"smulbt	r8,r8,r4\n\t"
+		"smulbb	r9,r9,r5\n\t"
+
+		/* if {s|t} < 0 || (s+t) > pb.area then pixel is outside */
+		"subs	r1,r1,r8\n\t"
+		"blt	6f\n\t"
+		"subs	r0,r0,r9\n\t"
+		"blt	6f\n\t"
+
+		"adds	r8,r0,r1\n\t"
+		"subs	r8,r6\n\t"
+		"bgt	6f\n\t"
+
+		"negs	r8,r8\n\t"
+		/* use barycentric U for color at p0; p1 & p2 assumed black */
+		"uxth	r0,r10\n\t"
+		"lsrs	r1,r10,#16\n\t"
+		"mul	r0,r0,r8\n\t"
+		"sdiv	r0,r0,r6\n\t"
+		/* plot pixel */
+		"lsls	r0,r0,r1\n\t"
+		"strh	r0,[%[fb],r11,lsl #1]\n\t"
+	"6:\n\t"
+		"adds	r11,r11,#1\n\t"
+		"cmp	r11,r14\n\t"
+		"bls	5b\n\t"
+
+		"ldrd	r1,r11,[sp,#8]\n\t"
+		"adds	%[fb],%[fb],#640\n\t"
+		"adds	r7,r7,#1\n\t"
+		"cmp	r7,r1\n\t"
+		"bls	4b\n\t"
+
+		"ldmia	sp!,{r9-r10}\n\t"
+	"7:\n\t"
+		"cmp	r10,r9\n\t"
+		"bne	3b\n\t"
+
+		"adds	sp,sp,#8+pb_size\n\t"
 		"ldmia	sp!,{%[color],%[idx],%[fb]}\n\t"
 	: /* none */
 	: [color] "r" (val_color),
@@ -2950,27 +3220,32 @@ int main(void)
 			alt_rot2d_solid_triforce(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 6) {
-			alt_rot2d_wire_trilist_bc(color, ii, framebuffer + (i & 1));
+			mask_shift[0] = mask;
+			mask_shift[1] = shift;
+			alt_rot2d_solid_tri(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 7) {
-			alt_rot2d_solid_trilist_bc(color, ii, framebuffer + (i & 1));
+			alt_rot2d_wire_trilist_bc(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 8) {
-			alt_rot3d_wire_trilist(color, ii, framebuffer + (i & 1));
+			alt_rot2d_solid_trilist_bc(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 9) {
-			alt_rot3d_wire_trilist_bc(color, ii, framebuffer + (i & 1));
+			alt_rot3d_wire_trilist(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 10) {
-			alt_rot3d_solid_trilist_bc(color, ii, framebuffer + (i & 1));
+			alt_rot3d_wire_trilist_bc(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 11) {
-			alt_rot3d_solid_trilist_bc_zb(color, ii, framebuffer + (i & 1));
+			alt_rot3d_solid_trilist_bc(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 12) {
-			alt_bounce_sphere(color, ii, framebuffer + (i & 1));
+			alt_rot3d_solid_trilist_bc_zb(color, ii, framebuffer + (i & 1));
 		}
 		else if (alt == 13) {
+			alt_bounce_sphere(color, ii, framebuffer + (i & 1));
+		}
+		else if (alt == 14) {
 			/* Color font 8x16 on black bg */
 			register uint16_t val_color asm ("r0") = 0;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -3006,7 +3281,7 @@ int main(void)
 						&fnt_wang_8x16 + 16 * (ch & 0xff));
 				}
 		}
-		else if (alt == 14) {
+		else if (alt == 15) {
 			/* Color font 8x8 on black bg */
 			register uint16_t val_color asm ("r0") = 0;
 			register void *ptr_fb asm ("r12") = framebuffer + (i & 1);
@@ -3042,7 +3317,7 @@ int main(void)
 						&fnt_wang_8x8 + 8 * (ch & 0xff));
 				}
 		}
-		else if (alt == 15) {
+		else if (alt == 16) {
 			/* Blue turtle-shell pattern */
 #if 1
 			for(int y=0, row=0; y < 240; y++, row+=320) {
@@ -3163,6 +3438,7 @@ int main(void)
 
 			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 0 + 9 * 8, cycle[15]);
 			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 1 + 9 * 8, cycle[16]);
+			print_x32(~color, framebuffer[i & 1] + 320 * 16 * 2 + 9 * 8, cycle[17]);
 		}
 
 		const uint32_t dt = DWT->CYCCNT - st;
