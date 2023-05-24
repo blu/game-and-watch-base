@@ -978,7 +978,8 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 	".equ	pb_e01,  R2_size * 0\n\t" /* R2 */
 	".equ	pb_e02,  R2_size * 1\n\t" /* R2 */
 	".equ	pb_area, R2_size * 2\n\t" /* word */
-	".equ	pb_size, R2_size * 2 + 4\n\t"
+	".equ	pb_ooa0, R2_size * 2 + 4\n\t" /* word */
+	".equ	pb_size, R2_size * 2 + 8\n\t"
 
 	/* plot tris */
 	/* transform obj -> scr */
@@ -1035,6 +1036,21 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 		"bl	init_pb\n\t"
 		/* skip tris of negative or zero area */
 		"ble	7f\n\t"
+
+		"ldr	r7,=mask_shift\n\t"
+		"ldrh	r6,[r7]\n\t"
+		"ldrh	r7,[r7,#2]\n\t"
+		/* compute per-vertex reciprocals for barycentric interpolation */
+		"lsls	r6,r6,#22\n\t"
+		"sdiv	r6,r6,r2\n\t"
+		/* pack recip and shift into one word */
+#if 0
+		"bfi	r6,r7,#28,#4\n\t"
+#else
+		"lsls	r6,r6,#4\n\t"
+		"bfi	r6,r7,#0,#4\n\t"
+#endif
+		"str	r6,[r12,#pb_ooa0]\n\t"
 
 		"ldrsh	r2,[r10,#-8]\n\t"
 		"ldrsh	r3,[r10,#-6]\n\t"
@@ -1135,8 +1151,7 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 		"stmdb	sp!,{r9-r10}\n\t" /* att: room for pb_size bytes */
 
 		/* iterate AABB along y */
-		"ldr	r10,=mask_shift\n\t"
-		"ldr	r10,[r10]\n\t"
+		"ldr	r10,[sp,#16+pb_ooa0]\n\t"
 		"movs	r9,#640\n\t"
 		"mla	%[fb],r7,r9,%[fb]\n\t"
 	"4:\n\t"
@@ -1167,10 +1182,19 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 
 		"negs	r8,r8\n\t"
 		/* use barycentric U for color at p0; p1 & p2 assumed black */
-		"uxth	r0,r10\n\t"
-		"lsrs	r1,r10,#16\n\t"
+#if 0
+		"ubfx	r1,r10,#28,#4\n\t"
+		"ubfx	r0,r10,#0,#28\n\t"
+#else
+		"ubfx	r1,r10,#0,#4\n\t"
+		"lsrs	r0,r10,#4\n\t"
+#endif
 		"mul	r0,r0,r8\n\t"
-		"sdiv	r0,r0,r6\n\t"
+
+		/* fx10.22 -> int10 */
+		"asrs	r0,r0,#22\n\t"
+		"adcs	r0,r0,#0\n\t"
+
 		/* plot pixel */
 		"lsls	r0,r0,r1\n\t"
 		"strh	r0,[%[fb],r11,lsl #1]\n\t"
