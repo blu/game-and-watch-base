@@ -883,11 +883,11 @@ static void alt_rot2d_solid_triforce(const uint16_t color, uint32_t ii, void *fr
 	"5:\n\t"
 		/* get barycentric coords for x,y */
 		/* see barycentric.s:get_coord */
-		"subs	r0,r11,r2\n\t"
-		"subs	r1,r7,r3\n\t"
+		"sub	r0,r11,r2\n\t"
+		"sub	r1,r7,r3\n\t"
 
-		"movs	r9,r0\n\t"
-		"movs	r10,r1\n\t"
+		"mov	r9,r0\n\t"
+		"mov	r10,r1\n\t"
 
 		"smulbt	r0,r0,r5\n\t"
 		"smulbb	r1,r1,r4\n\t"
@@ -1160,11 +1160,11 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 	"5:\n\t"
 		/* get barycentric coords for x,y */
 		/* see barycentric.s:get_coord */
-		"subs	r0,r11,r2\n\t"
-		"subs	r1,r7,r3\n\t"
+		"sub	r0,r11,r2\n\t"
+		"sub	r1,r7,r3\n\t"
 
-		"movs	r8,r0\n\t"
-		"movs	r9,r1\n\t"
+		"mov	r8,r0\n\t"
+		"mov	r9,r1\n\t"
 
 		"smulbt	r0,r0,r5\n\t"
 		"smulbb	r1,r1,r4\n\t"
@@ -1181,7 +1181,7 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 		"subs	r8,r6\n\t"
 		"bgt	6f\n\t"
 
-		"negs	r8,r8\n\t"
+		"neg	r8,r8\n\t"
 		/* use barycentric U for color at p0; p1 & p2 assumed black */
 #if 0
 		"ubfx	r1,r10,#28,#4\n\t"
@@ -1449,11 +1449,11 @@ static void alt_rot2d_spectral_tri(const uint16_t color, uint32_t ii, void *fram
 	"5:\n\t"
 		/* get barycentric coords for x,y */
 		/* see barycentric.s:get_coord */
-		"subs	r0,r11,r2\n\t"
-		"subs	r1,r7,r3\n\t"
+		"sub	r0,r11,r2\n\t"
+		"sub	r1,r7,r3\n\t"
 
-		"movs	r8,r0\n\t"
-		"movs	r9,r1\n\t"
+		"mov	r8,r0\n\t"
+		"mov	r9,r1\n\t"
 
 		"smulbt	r0,r0,r5\n\t"
 		"smulbb	r1,r1,r4\n\t"
@@ -1470,7 +1470,7 @@ static void alt_rot2d_spectral_tri(const uint16_t color, uint32_t ii, void *fram
 		"subs	r8,r6\n\t"
 		"bgt	6f\n\t"
 
-		"negs	r8,r8\n\t"
+		"neg	r8,r8\n\t"
 		/* barycentric {s,t,u} in {r0,r1,r8} */
 		"ldr	r10,[sp,#16+pb_ooa0]\n\t"
 		"ldr	r9,[sp,#16+pb_ooa1]\n\t"
@@ -1481,11 +1481,11 @@ static void alt_rot2d_spectral_tri(const uint16_t color, uint32_t ii, void *fram
 
 		/* fx10.22 -> int10 */
 		"asrs	r10,r10,#22\n\t"
-		"adcs	r10,r10,#0\n\t"
+		"adc	r10,r10,#0\n\t"
 		"asrs	r9,r9,#22\n\t"
-		"adcs	r9,r9,#0\n\t"
+		"adc	r9,r9,#0\n\t"
 		"asrs	r8,r8,#22\n\t"
-		"adcs	r8,r8,#0\n\t"
+		"adc	r8,r8,#0\n\t"
 
 		/* plot pixel */
 		"orr	r10,r10,r9,lsl #5\n\t"
