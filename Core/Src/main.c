@@ -1333,9 +1333,9 @@ static void alt_rot2d_spectral_tri(const uint16_t color, uint32_t ii, void *fram
 
 		/* compute per-vertex reciprocals for barycentric interpolation */
 		/* p0: blue, p1: green, p2: red */
-		"ldr	r6,=0x1f << 22\n\t"
-		"ldr	r7,=0x3f << 22\n\t"
-		"ldr	r8,=0x1f << 22\n\t"
+		"movs	r6,#0x1f << 22\n\t"
+		"movs	r7,#0x3f << 22\n\t"
+		"movs	r8,#0x1f << 22\n\t"
 		"sdiv	r6,r6,r2\n\t"
 		"sdiv	r7,r7,r2\n\t"
 		"sdiv	r8,r8,r2\n\t"
