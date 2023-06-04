@@ -1196,6 +1196,11 @@ static void alt_rot2d_solid_tri(const uint16_t color, uint32_t ii, void *framebu
 		"asrs	r0,r0,#22\n\t"
 		"adcs	r0,r0,#0\n\t"
 
+		"tsts	r0,#1\n\t"
+		"ite	eq\n\t"
+		"moveq	r0,#0\n\t"
+		"movne	r0,#0x1f\n\t"
+
 		/* plot pixel */
 		"lsls	r0,r0,r1\n\t"
 		"strh	r0,[%[fb],r11,lsl #1]\n\t"
@@ -1472,24 +1477,16 @@ static void alt_rot2d_spectral_tri(const uint16_t color, uint32_t ii, void *fram
 
 		"neg	r8,r8\n\t"
 		/* barycentric {s,t,u} in {r0,r1,r8} */
-		"ldr	r10,[sp,#16+pb_ooa0]\n\t"
-		"ldr	r9,[sp,#16+pb_ooa1]\n\t"
-		"mul    r10,r10,r8\n\t"
-		"ldr	r8,[sp,#16+pb_ooa2]\n\t"
-		"mul	r9,r9,r0\n\t"
-		"mul	r8,r8,r1\n\t"
+		"mov	r10,#0x1f\n\t"
+		"mul	r10,r10,r8\n\t"
+		"sdiv	r10,r10,r6\n\t"
 
-		/* fx10.22 -> int10 */
-		"asrs	r10,r10,#22\n\t"
-		"adc	r10,r10,#0\n\t"
-		"asrs	r9,r9,#22\n\t"
-		"adc	r9,r9,#0\n\t"
-		"asrs	r8,r8,#22\n\t"
-		"adc	r8,r8,#0\n\t"
+		"tsts	r10,#1\n\t"
+		"ite	eq\n\t"
+		"moveq	r10,#0\n\t"
+		"movne	r10,#0x1f\n\t"
 
 		/* plot pixel */
-		"orr	r10,r10,r9,lsl #5\n\t"
-		"orr	r10,r10,r8,lsl #5+6\n\t"
 		"strh	r10,[%[fb],r11,lsl #1]\n\t"
 	"6:\n\t"
 		"adds	r11,r11,#1\n\t"
